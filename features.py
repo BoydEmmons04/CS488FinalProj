@@ -10,6 +10,9 @@ modeling steps, including load factor and saturation indicators.
 from pathlib import Path
 
 import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest, f_classif, f_regression
+from sklearn.preprocessing import StandardScaler
 
 
 CLEANED_DIR = Path("cleaned_data")
@@ -102,9 +105,136 @@ def build_analysis_table(save=True):
     return analysis_df
 
 
+# ─── Feature Selection & Dimensionality Reduction ────────────────────────────
+
+# Numeric feature columns available in the analysis table
+ALL_NUMERIC_FEATURES = [
+    "avg_fare",
+    "passengers_db1b",
+    "market_distance",
+    "passengers_t100",
+    "seats",
+    "departures_performed",
+    "avg_fuel_price",
+    "load_factor",
+]
+
+
+def drop_highly_correlated(df, features, threshold=0.95):
+    """Return a reduced feature list by removing highly correlated pairs.
+
+    For any pair of features with |r| >= threshold the second feature in the
+    pair is dropped, keeping the one that appears first.
+    """
+    corr_matrix = df[features].corr().abs()
+    to_drop = set()
+    for i, col_i in enumerate(features):
+        for col_j in features[i + 1 :]:
+            if col_i not in to_drop and corr_matrix.loc[col_i, col_j] >= threshold:
+                to_drop.add(col_j)
+    return [f for f in features if f not in to_drop]
+
+
+def select_features_regression(df, target="avg_fare", k=5):
+    """Use SelectKBest (F-regression) to choose the k best predictors.
+
+    Returns
+    -------
+    selected : list[str]   – ordered list of selected feature names
+    scores   : pd.Series   – F-scores for all candidate features
+    """
+    candidates = [f for f in ALL_NUMERIC_FEATURES if f != target]
+    X = df[candidates].dropna()
+    y = df.loc[X.index, target]
+
+    selector = SelectKBest(score_func=f_regression, k=k)
+    selector.fit(X, y)
+
+    scores = pd.Series(selector.scores_, index=candidates).sort_values(ascending=False)
+    selected = scores.head(k).index.tolist()
+    return selected, scores
+
+
+def select_features_classification(df, target="is_saturated", k=5):
+    """Use SelectKBest (F-classif / ANOVA) to choose the k best predictors.
+
+    Returns
+    -------
+    selected : list[str]   – ordered list of selected feature names
+    scores   : pd.Series   – F-scores for all candidate features
+    """
+    candidates = [f for f in ALL_NUMERIC_FEATURES if f != target]
+    X = df[candidates].dropna()
+    y = df.loc[X.index, target]
+
+    selector = SelectKBest(score_func=f_classif, k=k)
+    selector.fit(X, y)
+
+    scores = pd.Series(selector.scores_, index=candidates).sort_values(ascending=False)
+    selected = scores.head(k).index.tolist()
+    return selected, scores
+
+
+def apply_pca(df, features=None, n_components=3):
+    """Apply PCA to the numeric features of the analysis table.
+
+    Parameters
+    ----------
+    df          : pd.DataFrame  – analysis table (rows must have no NaNs in features)
+    features    : list[str]     – columns to reduce (defaults to ALL_NUMERIC_FEATURES)
+    n_components: int           – number of principal components to keep
+
+    Returns
+    -------
+    pca         : fitted sklearn PCA object
+    pca_df      : pd.DataFrame with columns PC1, PC2, … PCn plus non-numeric columns
+    explained   : pd.Series     – explained variance ratio per component
+    """
+    if features is None:
+        features = ALL_NUMERIC_FEATURES
+
+    sub = df[features].dropna()
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(sub)
+
+    pca = PCA(n_components=n_components, random_state=42)
+    components = pca.fit_transform(X_scaled)
+
+    col_names = [f"PC{i + 1}" for i in range(n_components)]
+    pca_df = pd.DataFrame(components, columns=col_names, index=sub.index)
+
+    explained = pd.Series(
+        pca.explained_variance_ratio_,
+        index=col_names,
+        name="explained_variance_ratio",
+    )
+    return pca, pca_df, explained
+
+
 if __name__ == "__main__":
     analysis_df = build_analysis_table(save=True)
     print(
         f"Analysis table created with {len(analysis_df):,} rows "
         f"and saved to {CLEANED_DIR / 'analysis_table.csv'}."
     )
+
+    clean_df = analysis_df.dropna(subset=ALL_NUMERIC_FEATURES)
+
+    print("\n--- Correlation-based feature reduction (threshold=0.95) ---")
+    reduced = drop_highly_correlated(clean_df, ALL_NUMERIC_FEATURES)
+    print(f"  Kept {len(reduced)}/{len(ALL_NUMERIC_FEATURES)} features: {reduced}")
+
+    print("\n--- SelectKBest for regression (target=avg_fare, k=5) ---")
+    reg_sel, reg_scores = select_features_regression(clean_df, k=5)
+    print(f"  Selected: {reg_sel}")
+    print(f"  F-scores:\n{reg_scores.to_string()}")
+
+    print("\n--- SelectKBest for classification (target=is_saturated, k=5) ---")
+    clf_sel, clf_scores = select_features_classification(clean_df, k=5)
+    print(f"  Selected: {clf_sel}")
+    print(f"  F-scores:\n{clf_scores.to_string()}")
+
+    print("\n--- PCA (3 components) ---")
+    pca_obj, pca_df, explained = apply_pca(clean_df, n_components=3)
+    print(f"  Explained variance ratio: {explained.to_dict()}")
+    print(f"  Total variance explained: {explained.sum():.4f}")

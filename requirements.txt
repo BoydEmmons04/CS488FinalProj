@@ -3,6 +3,7 @@ numpy
 scikit-learn
 statsmodels
 matplotlib
+seaborn
 streamlit
 xgboost
 sqlite-utils

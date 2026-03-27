@@ -1,0 +1,13 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Generated analysis/model artifacts
+outputs/
+
+# Optional local notebook checkpoints
+.ipynb_checkpoints/

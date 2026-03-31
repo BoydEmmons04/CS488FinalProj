@@ -1,8 +1,5 @@
 """
-Modeling module for core project techniques.
-
-Builds artifacts for Correlation analysis, trains Linear Regression for fare
-prediction, and fits PCA as an independent dimensionality-reduction analysis.
+Trains regression and dimensionality reduction models, generates predictions, and produces correlation analyses and visualizations.
 """
 
 from pathlib import Path

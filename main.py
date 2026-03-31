@@ -1,8 +1,5 @@
 """
-Main pipeline entrypoint.
-
-Runs the end-to-end workflow: ingestion, feature table creation, modeling,
-and evaluation artifact generation.
+Runs the full workflow: ingestion, feature building, modeling, and evaluation artifact generation.
 """
 
 from ingest import preprocess_all_data

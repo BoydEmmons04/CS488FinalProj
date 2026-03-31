@@ -1,8 +1,5 @@
 """
-Evaluation module: Computes performance metrics, visualizations, and analysis for all models.
-Implements regression evaluation metrics required by the project rubric including RMSE, R2, MAPE, and SNR.
-Generates core visualizations aligned to the project workflow: model comparison plots,
-key-variable histograms, predicted-vs-actual plots, PCA variance, and time-series trends.
+Computes required regression metrics and produces comparison plots, variable summaries, predicted‑vs‑actual charts, PCA variance views, and time‑series visuals.
 """
 
 from pathlib import Path

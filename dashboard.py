@@ -1,8 +1,5 @@
 """
-Dashboard module for reviewing modeling and evaluation outputs.
-
-This Streamlit app presents metrics, predictions, and generated artifacts for
-the three project techniques: Correlation analysis, Linear Regression, and PCA.
+Shows modeling results, metrics, predictions, and artifacts for correlation analysis, linear regression, and PCA.
 """
 
 from pathlib import Path

@@ -1,8 +1,5 @@
 """
-Ingestion and preprocessing module for raw airline datasets.
-
-This module loads source CSV files, filters to the project scope, and writes
-cleaned inputs used by downstream feature construction and modeling.
+Loads the raw airline CSVs, filters them to the project scope, and outputs cleaned datasets for later steps.
 """
 
 import pandas as pd

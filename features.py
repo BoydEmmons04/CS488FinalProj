@@ -1,9 +1,5 @@
 """
-Builds the merged feature table used for airfare analysis and modeling.
-
-This module loads the cleaned airline and fuel datasets, aggregates them to a
-shared route and quarter level, and creates the core variables used in later
-modeling steps, including load factor and saturation indicators.
+Builds the merged route‑by‑quarter feature table from cleaned airline and fuel data, including load‑factor and saturation variables.
 """
 
 

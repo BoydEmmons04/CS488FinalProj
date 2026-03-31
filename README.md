@@ -3,8 +3,8 @@
 This project tests whether higher airline load factor is associated with higher airfare, using a core pipeline built around:
 
 1. Correlation analysis
-2. Linear regression
-3. PCA + linear regression
+2. Linear Regression
+3. PCA
 
 ## Requirements
 
@@ -37,7 +37,7 @@ streamlit run dashboard.py
 main.py        # Orchestrates full pipeline
 ingest.py      # Data preprocessing and cleaned CSV generation
 features.py    # Feature construction and analysis table build
-modeling.py    # Correlation + Linear + PCA regression models
+modeling.py    # Correlation analysis + Linear Regression + PCA
 evaluation.py  # Metrics and project-aligned visual outputs
 dashboard.py   # Streamlit viewer for outputs
 ```
@@ -65,11 +65,10 @@ Evaluation outputs:
 3. `outputs/evaluation/r2_mape_comparison.png`
 4. `outputs/evaluation/accuracy_comparison.png`
 5. `outputs/evaluation/actual_vs_predicted_linear_regression.png`
-6. `outputs/evaluation/actual_vs_predicted_pca_regression.png`
+6. `outputs/evaluation/pca_explained_variance.png`
 7. `outputs/evaluation/key_variable_histograms.png`
 8. `outputs/evaluation/feature_importance_linear.csv`
 9. `outputs/evaluation/pca_explained_variance.csv`
-10. `outputs/evaluation/pca_explained_variance.png`
-11. `outputs/evaluation/fare_load_factor_over_time.png`
-12. `outputs/evaluation/fuel_price_over_time.png`
-13. `outputs/evaluation/time_series_summary.csv`
+10. `outputs/evaluation/fare_load_factor_over_time.png`
+11. `outputs/evaluation/fuel_price_over_time.png`
+12. `outputs/evaluation/time_series_summary.csv`

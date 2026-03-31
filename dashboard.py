@@ -20,7 +20,7 @@ def load_outputs():
 
 def main():
 	st.title("Airline Fare Modeling Dashboard")
-	st.caption("Correlation analysis + linear regression + PCA-regression outputs")
+	st.caption("Core techniques: Correlation analysis, Linear Regression, and PCA")
 
 	metrics_df, preds_df = load_outputs()
 	if metrics_df is None or preds_df is None:
@@ -127,7 +127,7 @@ def main():
 				st.markdown(f"**{label}**")
 				st.dataframe(pd.read_csv(file_path), use_container_width=True)
 
-		st.info("Artifacts in this tab are aligned to the required model set: Correlation, Linear Regression, and PCA + Regression.")
+		st.info("Artifacts in this tab are aligned to the required model set: Correlation analysis, Linear Regression, and PCA.")
 
 
 if __name__ == "__main__":

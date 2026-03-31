@@ -7,6 +7,8 @@ key-variable histograms, predicted-vs-actual plots, PCA variance, and time-serie
 
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -14,19 +16,6 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, 
 
 
 OUTPUT_DIR = Path("outputs") / "evaluation"
-
-# Legacy evaluation artifacts from removed models/plots.
-DEPRECATED_EVAL_GLOBS = [
-	"*gradient_boosting*",
-	"residuals_*.png",
-	"feature_distributions.png",
-	"target_distribution.png",
-	"feature_importance_gb.png",
-	"feature_importance_gradient_boosting.csv",
-	"feature_importance_permutation.csv",
-	"pca_component_loadings.csv",
-	"rmse_comparison.png",
-]
 
 
 def _compute_metrics(y_true, y_pred):
@@ -133,12 +122,12 @@ def _save_time_plots(model_df):
 	plt.close(fig)
 
 
-def _save_feature_importance_artifacts(trained_models, X_test):
+def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 	"""Save concise interpretable artifacts for linear and PCA-based models."""
 	feature_cols = list(X_test.columns)
 
-	if "linear_regression" in trained_models:
-		linear_model = trained_models["linear_regression"]
+	if "Linear Regression" in trained_models:
+		linear_model = trained_models["Linear Regression"]
 		if hasattr(linear_model, "coef_"):
 			coef_df = pd.DataFrame(
 				{
@@ -149,33 +138,30 @@ def _save_feature_importance_artifacts(trained_models, X_test):
 			).sort_values("abs_coefficient", ascending=False)
 			coef_df.to_csv(OUTPUT_DIR / "feature_importance_linear.csv", index=False)
 
-	if "pca_regression" in trained_models:
-		pca_pipeline = trained_models["pca_regression"]
-		pca_model = pca_pipeline.named_steps.get("pca")
-		if pca_model is not None and hasattr(pca_model, "components_"):
-			component_cols = [f"PC{i + 1}" for i in range(pca_model.n_components_)]
-			explained_df = pd.DataFrame(
-				{
-					"component": component_cols,
-					"explained_variance_ratio": pca_model.explained_variance_ratio_,
-					"cumulative_explained_variance": np.cumsum(pca_model.explained_variance_ratio_),
-				}
-			)
-			explained_df.to_csv(OUTPUT_DIR / "pca_explained_variance.csv", index=False)
+	if pca_model is not None and hasattr(pca_model, "components_"):
+		component_cols = [f"PC{i + 1}" for i in range(pca_model.n_components_)]
+		explained_df = pd.DataFrame(
+			{
+				"component": component_cols,
+				"explained_variance_ratio": pca_model.explained_variance_ratio_,
+				"cumulative_explained_variance": np.cumsum(pca_model.explained_variance_ratio_),
+			}
+		)
+		explained_df.to_csv(OUTPUT_DIR / "pca_explained_variance.csv", index=False)
 
-			fig, ax = plt.subplots(figsize=(8, 5))
-			ax.plot(
-				range(1, len(explained_df) + 1),
-				explained_df["cumulative_explained_variance"],
-				marker="o",
-			)
-			ax.set_xlabel("Number of Components")
-			ax.set_ylabel("Cumulative Explained Variance")
-			ax.set_title("PCA Cumulative Explained Variance")
-			ax.set_ylim([0, 1.05])
-			plt.tight_layout()
-			fig.savefig(OUTPUT_DIR / "pca_explained_variance.png", dpi=150)
-			plt.close(fig)
+		fig, ax = plt.subplots(figsize=(8, 5))
+		ax.plot(
+			range(1, len(explained_df) + 1),
+			explained_df["cumulative_explained_variance"],
+			marker="o",
+		)
+		ax.set_xlabel("Number of Components")
+		ax.set_ylabel("Cumulative Explained Variance")
+		ax.set_title("PCA Cumulative Explained Variance")
+		ax.set_ylim([0, 1.05])
+		plt.tight_layout()
+		fig.savefig(OUTPUT_DIR / "pca_explained_variance.png", dpi=150)
+		plt.close(fig)
 
 
 def evaluate_model_outputs(model_results, save=True):
@@ -192,6 +178,7 @@ def evaluate_model_outputs(model_results, save=True):
 	y_test = model_results["y_test"]
 	predictions = model_results["predictions"]
 	trained_models = model_results["trained_models"]
+	pca_model = model_results.get("pca_model")
 	X_test = model_results["X_test"]
 	model_df = model_results.get("model_df")
 
@@ -206,12 +193,6 @@ def evaluate_model_outputs(model_results, save=True):
 
 	if save:
 		OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-		# Remove stale files so outputs clearly map to the final model set.
-		for pattern in DEPRECATED_EVAL_GLOBS:
-			for path in OUTPUT_DIR.glob(pattern):
-				if path.exists():
-					path.unlink()
 
 		metrics_df.to_csv(OUTPUT_DIR / "model_metrics.csv", index=False)
 
@@ -232,7 +213,8 @@ def evaluate_model_outputs(model_results, save=True):
 		# 2. RMSE and SNR comparison chart
 		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 		
-		colors = ["#4C78A8", "#F58518", "#54A24B"]
+		base_colors = ["#4C78A8", "#54A24B", "#F58518"]
+		colors = [base_colors[i % len(base_colors)] for i in range(len(metrics_df))]
 		ax1.bar(metrics_df["model"], metrics_df["RMSE"], color=colors)
 		ax1.set_title("Model RMSE Comparison (Lower is Better)")
 		ax1.set_ylabel("RMSE ($)")
@@ -299,7 +281,7 @@ def evaluate_model_outputs(model_results, save=True):
 			plt.close(fig)
 
 		# 6. Linear/PCA artifact tables and plot.
-		_save_feature_importance_artifacts(trained_models, X_test)
+		_save_feature_importance_artifacts(trained_models, X_test, pca_model=pca_model)
 
 		# 7. Time-aware plots for fare/load-factor/fuel trend outputs
 		_save_time_plots(model_df)

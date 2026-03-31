@@ -1,7 +1,8 @@
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
@@ -12,12 +13,6 @@ from sklearn.preprocessing import StandardScaler
 
 CLEANED_DIR = Path("cleaned_data")
 OUTPUT_DIR = Path("outputs") / "modeling"
-
-# Legacy files from earlier iterations that should not persist in final outputs.
-DEPRECATED_MODELING_OUTPUTS = [
-	"correlation_matrix.csv",
-]
-
 
 def load_analysis_table(path=CLEANED_DIR / "analysis_table.csv"):
 	"""Load the merged analysis table used for modeling."""
@@ -99,24 +94,22 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		X, y, test_size=test_size, random_state=random_state
 	)
 
-	models = {
-		"linear_regression": LinearRegression(),
-		"pca_regression": Pipeline(
-			[
-				("scaler", StandardScaler()),
-				("pca", PCA(n_components=0.95)),
-				("regressor", LinearRegression()),
-			]
-		),
-	}
+	# Independent supervised model: Linear Regression
+	linear_model = LinearRegression()
+	linear_model.fit(X_train, y_train)
 
-	predictions = {}
-	trained_models = {}
+	predictions = {"Linear Regression": linear_model.predict(X_test)}
+	trained_models = {"Linear Regression": linear_model}
 
-	for model_name, model in models.items():
-		model.fit(X_train, y_train)
-		trained_models[model_name] = model
-		predictions[model_name] = model.predict(X_test)
+	# Independent unsupervised model: PCA (no regression head).
+	pca_pipeline = Pipeline(
+		[
+			("scaler", StandardScaler()),
+			("pca", PCA(n_components=0.95)),
+		]
+	)
+	pca_pipeline.fit(X_train)
+	X_test_pca = pca_pipeline.transform(X_test)
 
 	correlation = model_df[feature_cols + [target_col]].corr(numeric_only=True)
 	correlation_focus = (
@@ -128,16 +121,11 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	test_predictions_df = X_test.copy()
 	test_predictions_df["actual_avg_fare"] = y_test.values
 	for model_name, preds in predictions.items():
-		test_predictions_df[f"pred_{model_name}"] = preds
+		pred_col = model_name.lower().replace(" ", "_")
+		test_predictions_df[f"pred_{pred_col}"] = preds
 
 	if save:
 		OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-		# Keep modeling output folder focused on current project techniques.
-		for filename in DEPRECATED_MODELING_OUTPUTS:
-			path = OUTPUT_DIR / filename
-			if path.exists():
-				path.unlink()
 
 		correlation_focus.to_csv(OUTPUT_DIR / "correlation_focus.csv")
 
@@ -167,7 +155,6 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		pred_export_cols = [
 			"actual_avg_fare",
 			"pred_linear_regression",
-			"pred_pca_regression",
 			"load_factor",
 			"avg_fuel_price",
 			"passengers_db1b",
@@ -184,16 +171,20 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		"y_test": y_test,
 		"predictions": predictions,
 		"trained_models": trained_models,
+		"pca_model": pca_pipeline.named_steps["pca"],
+		"X_test_pca": X_test_pca,
 		"test_predictions_df": test_predictions_df,
 		"correlation": correlation,
 		"correlation_focus": correlation_focus,
 	}
 
 
-def predict_fares(input_df=None, model_name="linear_regression"):
+def predict_fares(input_df=None, model_name="Linear Regression"):
 	"""Convenience prediction helper for dashboard/demo use."""
 	analysis_df = load_analysis_table() if input_df is None else input_df
 	results = run_modeling_pipeline(analysis_df=analysis_df, save=False)
+	if model_name == "linear_regression":
+		model_name = "Linear Regression"
 	model = results["trained_models"][model_name]
 	preds = model.predict(results["X_test"])
 

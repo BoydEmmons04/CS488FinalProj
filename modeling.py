@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
-from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -13,6 +12,11 @@ from sklearn.preprocessing import StandardScaler
 
 CLEANED_DIR = Path("cleaned_data")
 OUTPUT_DIR = Path("outputs") / "modeling"
+
+# Legacy files from earlier iterations that should not persist in final outputs.
+DEPRECATED_MODELING_OUTPUTS = [
+	"correlation_matrix.csv",
+]
 
 
 def load_analysis_table(path=CLEANED_DIR / "analysis_table.csv"):
@@ -104,7 +108,6 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 				("regressor", LinearRegression()),
 			]
 		),
-		"gradient_boosting": GradientBoostingRegressor(random_state=random_state),
 	}
 
 	predictions = {}
@@ -116,6 +119,11 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		predictions[model_name] = model.predict(X_test)
 
 	correlation = model_df[feature_cols + [target_col]].corr(numeric_only=True)
+	correlation_focus = (
+		correlation[["load_factor", "avg_fuel_price", "passengers_db1b", target_col]]
+		.loc[["load_factor", "avg_fuel_price", "passengers_db1b", target_col]]
+		.copy()
+	)
 
 	test_predictions_df = X_test.copy()
 	test_predictions_df["actual_avg_fare"] = y_test.values
@@ -125,7 +133,13 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	if save:
 		OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-		correlation.to_csv(OUTPUT_DIR / "correlation_matrix.csv")
+		# Keep modeling output folder focused on current project techniques.
+		for filename in DEPRECATED_MODELING_OUTPUTS:
+			path = OUTPUT_DIR / filename
+			if path.exists():
+				path.unlink()
+
+		correlation_focus.to_csv(OUTPUT_DIR / "correlation_focus.csv")
 
 		fig, ax = plt.subplots(figsize=(10, 8))
 		cax = ax.imshow(correlation.values, cmap="coolwarm", vmin=-1, vmax=1)
@@ -139,17 +153,40 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		fig.savefig(OUTPUT_DIR / "correlation_heatmap.png", dpi=150)
 		plt.close(fig)
 
-		test_predictions_df.to_csv(OUTPUT_DIR / "test_predictions.csv", index=False)
+		# Core exploratory plot required by project: load factor vs airfare.
+		fig, ax = plt.subplots(figsize=(8, 6))
+		ax.scatter(model_df["load_factor"], model_df[target_col], alpha=0.35, edgecolors="none")
+		ax.set_xlabel("Load Factor")
+		ax.set_ylabel("Average Airfare ($)")
+		ax.set_title("Load Factor vs Airfare")
+		plt.tight_layout()
+		fig.savefig(OUTPUT_DIR / "load_factor_vs_airfare.png", dpi=150)
+		plt.close(fig)
+
+		# Keep only compact prediction outputs needed for review/dashboard.
+		pred_export_cols = [
+			"actual_avg_fare",
+			"pred_linear_regression",
+			"pred_pca_regression",
+			"load_factor",
+			"avg_fuel_price",
+			"passengers_db1b",
+		]
+		existing_cols = [c for c in pred_export_cols if c in test_predictions_df.columns]
+		test_predictions_df[existing_cols].to_csv(OUTPUT_DIR / "test_predictions.csv", index=False)
 
 	return {
 		"feature_columns": feature_cols,
 		"target_column": target_col,
+		"model_df": model_df,
+		"analysis_df": analysis_df,
 		"X_test": X_test,
 		"y_test": y_test,
 		"predictions": predictions,
 		"trained_models": trained_models,
 		"test_predictions_df": test_predictions_df,
 		"correlation": correlation,
+		"correlation_focus": correlation_focus,
 	}
 
 

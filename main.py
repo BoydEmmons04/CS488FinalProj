@@ -1,11 +1,11 @@
-from cleaning import preprocess_all_data
+from ingest import preprocess_all_data
 from features import build_analysis_table
 from modeling import run_modeling_pipeline
 from evaluation import evaluate_model_outputs
 
 
 def run_pipeline():
-    # Runs the full analytics flow from preprocessing to evaluation.
+    """Runs the full analytics flow from preprocessing to evaluation."""
     preprocess_all_data()
     analysis_df = build_analysis_table(save=True)
     model_results = run_modeling_pipeline(analysis_df=analysis_df, save=True)
@@ -18,9 +18,12 @@ def run_pipeline():
     print("Evaluation outputs saved to outputs/evaluation/")
 
     best = metrics_df.iloc[0]
+    accuracy_text = ""
+    if "AccuracyPct" in metrics_df.columns:
+        accuracy_text = f" | Accuracy={best['AccuracyPct']:.2f}%"
     print(
         "Best model by RMSE: "
-        f"{best['model']} | RMSE={best['RMSE']:.3f} | R2={best['R2']:.3f} | MAPE={best['MAPE']:.3f}"
+        f"{best['model']} | RMSE={best['RMSE']:.3f} | R2={best['R2']:.3f} | MAPE={best['MAPE']:.3f}{accuracy_text}"
     )
 
     return {

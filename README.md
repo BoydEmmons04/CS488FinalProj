@@ -1,193 +1,75 @@
-# Project Setup Guide
+# Airline Load Factor and Airfare Analysis
 
-This guide explains how to clone the repository, set up your local development environment, and run the project.
+This project tests whether higher airline load factor is associated with higher airfare, using a core pipeline built around:
 
----
+1. Correlation analysis
+2. Linear regression
+3. PCA + linear regression
 
-## Prerequisites
+## Requirements
 
-Make sure you have the following installed:
+1. Python 3.9+
+2. Git
 
-* Python 3.9 or newer
-* Git
-* (Optional) VS Code or another code editor
-* At least 1–2 GB of free disk space
-
-  The virtual environment and required Python dependencies typically require between 500 MB and 1.5 GB. Additional space may be needed for datasets and generated outputs.
-
-Verify installations:
-
-```bash
-python3 --version
-git --version
-```
-
----
-
-## 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
-```
-
----
-
-## 2. Create Virtual Environment
-
-Create a local Python virtual environment:
-
-```bash
-python3 -m venv .venv
-```
-
----
-
-## 3. Activate Virtual Environment
-
-### macOS / Linux
-
-```bash
-source .venv/bin/activate
-```
-
-### Windows (PowerShell)
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-### Windows (Command Prompt)
-
-```cmd
-.venv\Scripts\activate.bat
-```
-
-You should see `(.venv)` in your terminal after activation.
-
----
-
-## 4. Install Dependencies
-
-Install required packages:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+## Run
 
-## 5. Verify Setup
-
-Run a simple check:
-
-```bash
-python -c "import pandas, numpy, sklearn"
-```
-
-If no errors appear, your environment is ready.
-
----
-
-## 6. Running the Project
-
-### Run main pipeline
+Run the full pipeline:
 
 ```bash
 python main.py
 ```
 
-### Run dashboard (if applicable)
+Run the dashboard:
 
 ```bash
 streamlit run dashboard.py
 ```
 
----
-
-## 7. Development Workflow
-
-### Pull latest changes
-
-```bash
-git pull origin main
-```
-
-### Create a new branch
-
-```bash
-git checkout -b feature/your-feature-name
-```
-
-### After making changes
-
-```bash
-git add .
-git commit -m "Describe your changes"
-git push origin feature/your-feature-name
-```
-
----
-
-## 8. Adding New Dependencies
-
-If you install a new package:
-
-```bash
-pip install <package>
-pip freeze > requirements.txt
-```
-
-Commit the updated `requirements.txt`.
-
----
-
-## 9. Common Issues
-
-### Virtual environment not activated
-
-* Make sure `(.venv)` appears in your terminal
-* Re-run activation command if needed
-
-### Module not found errors
-
-```bash
-pip install -r requirements.txt
-```
-
-### Python version issues
-
-* Ensure Python 3.9+ is being used
-* Try:
-
-```bash
-python3 -m venv .venv
-```
-
----
-
-## 10. Project Structure (Overview)
+## Core Pipeline Files
 
 ```text
-project/
-├── main.py
-├── ingest.py
-├── cleaning.py
-├── features.py
-├── modeling.py
-├── evaluation.py
-├── dashboard.py
-├── requirements.txt
-└── .venv/
+main.py        # Orchestrates full pipeline
+ingest.py      # Data preprocessing and cleaned CSV generation
+features.py    # Feature construction and analysis table build
+modeling.py    # Correlation + Linear + PCA regression models
+evaluation.py  # Metrics and project-aligned visual outputs
+dashboard.py   # Streamlit viewer for outputs
 ```
 
----
+## Data Flow
 
-## Summary
+1. Raw data in `Project Datasets/`
+2. Cleaned data written to `cleaned_data/`
+3. Modeling artifacts written to `outputs/modeling/`
+4. Evaluation artifacts written to `outputs/evaluation/`
 
-1. Clone the repository
-2. Create and activate virtual environment
-3. Install dependencies
-4. Run the project
+## Output Artifacts (Current)
 
-After setup, you can begin working on your assigned features.
+Modeling outputs:
+
+1. `outputs/modeling/correlation_focus.csv`
+2. `outputs/modeling/correlation_heatmap.png`
+3. `outputs/modeling/load_factor_vs_airfare.png`
+4. `outputs/modeling/test_predictions.csv`
+
+Evaluation outputs:
+
+1. `outputs/evaluation/model_metrics.csv`
+2. `outputs/evaluation/rmse_snr_comparison.png`
+3. `outputs/evaluation/r2_mape_comparison.png`
+4. `outputs/evaluation/accuracy_comparison.png`
+5. `outputs/evaluation/actual_vs_predicted_linear_regression.png`
+6. `outputs/evaluation/actual_vs_predicted_pca_regression.png`
+7. `outputs/evaluation/key_variable_histograms.png`
+8. `outputs/evaluation/feature_importance_linear.csv`
+9. `outputs/evaluation/pca_explained_variance.csv`
+10. `outputs/evaluation/pca_explained_variance.png`
+11. `outputs/evaluation/fare_load_factor_over_time.png`
+12. `outputs/evaluation/fuel_price_over_time.png`
+13. `outputs/evaluation/time_series_summary.csv`

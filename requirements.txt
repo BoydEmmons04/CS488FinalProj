@@ -1,9 +1,5 @@
 pandas
 numpy
 scikit-learn
-statsmodels
 matplotlib
 streamlit
-xgboost
-sqlite-utils
-python-dotenv

@@ -1,3 +1,10 @@
+"""
+Ingestion and preprocessing module for raw airline datasets.
+
+This module loads source CSV files, filters to the project scope, and writes
+cleaned inputs used by downstream feature construction and modeling.
+"""
+
 import pandas as pd
 from pathlib import Path
 

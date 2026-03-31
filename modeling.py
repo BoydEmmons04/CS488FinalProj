@@ -1,3 +1,10 @@
+"""
+Modeling module for core project techniques.
+
+Builds artifacts for Correlation analysis, trains Linear Regression for fare
+prediction, and fits PCA as an independent dimensionality-reduction analysis.
+"""
+
 from pathlib import Path
 
 import matplotlib

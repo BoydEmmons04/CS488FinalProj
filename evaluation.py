@@ -27,13 +27,9 @@ def _compute_metrics(y_true, y_pred):
 	rmse = mean_squared_error(y_true, y_pred) ** 0.5
 	mape = mean_absolute_percentage_error(y_true, y_pred)
 	r2 = r2_score(y_true, y_pred)
-	
-	# SNR: Signal power / Noise power
-	# Signal power = mean(y_true)^2
-	# Noise power = mean((y_true - y_pred)^2) = MSE
 	signal_power = np.mean(y_true) ** 2
 	noise_power = mean_squared_error(y_true, y_pred)
-	snr = signal_power / (noise_power + 1e-8)  # Avoid division by zero
+	snr = signal_power / (noise_power + 1e-8)
 	
 	return {
 		"RMSE": rmse,
@@ -44,10 +40,7 @@ def _compute_metrics(y_true, y_pred):
 
 
 def _add_accuracy_columns(metrics_df):
-	"""Add explicit accuracy-style fields for easier non-technical consumption."""
-	# Accuracy derived from percentage error. Clipped to [0, 100] for readability.
 	metrics_df["AccuracyPct"] = ((1.0 - metrics_df["MAPE"]) * 100.0).clip(lower=0.0, upper=100.0)
-	# R2 also represented as a percentage for dashboard/report tables.
 	metrics_df["R2Pct"] = (metrics_df["R2"] * 100.0).clip(lower=0.0, upper=100.0)
 	return metrics_df
 
@@ -161,17 +154,133 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 		plt.close(fig)
 
 
+def _save_explanatory_plots(model_df):
+	"""Save relationship plots for key explanatory variables from all datasets."""
+	if model_df is None or model_df.empty:
+		return
+
+	plot_pairs = [
+		("load_factor", "Load Factor"),
+		("competition_unique_carriers", "Competition (Unique Carriers)"),
+		("route_avg_arr_delay_rate", "Route Avg Delay Rate"),
+		("avg_fuel_price", "Average Fuel Price"),
+	]
+	available_pairs = [(c, l) for c, l in plot_pairs if c in model_df.columns]
+	if not available_pairs:
+		return
+
+	fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+	axes = axes.flatten()
+	for idx, (col, label) in enumerate(available_pairs[:4]):
+		axes[idx].scatter(model_df[col], model_df["avg_fare"], alpha=0.35, edgecolors="none")
+		axes[idx].set_xlabel(label)
+		axes[idx].set_ylabel("Average Fare ($)")
+		axes[idx].set_title(f"{label} vs Avg Fare")
+	for idx in range(len(available_pairs), 4):
+		axes[idx].set_visible(False)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / "feature_relationships_vs_fare.png", dpi=150)
+	plt.close(fig)
+
+	delay_share_cols = [
+		"route_weather_delay_share",
+		"route_nas_delay_share",
+		"route_late_aircraft_delay_share",
+		"route_carrier_delay_share",
+	]
+	delay_share_cols = [c for c in delay_share_cols if c in model_df.columns]
+	if delay_share_cols:
+		mean_shares = model_df[delay_share_cols].mean().sort_values(ascending=False)
+		labels = [
+			name.replace("route_", "").replace("_delay_share", "").replace("_", " ").title()
+			for name in mean_shares.index
+		]
+		fig, ax = plt.subplots(figsize=(10, 5))
+		ax.bar(labels, mean_shares.values, color=["#E45756", "#4C78A8", "#F58518", "#72B7B2"][: len(labels)])
+		ax.set_ylabel("Average Share of Total Delay Minutes")
+		ax.set_ylim([0, 1])
+		ax.set_title("Average Delay Cause Composition (Route-Level)")
+		ax.tick_params(axis="x", rotation=20)
+		plt.tight_layout()
+		fig.savefig(OUTPUT_DIR / "delay_cause_composition.png", dpi=150)
+		plt.close(fig)
+
+
+def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=None):
+	"""Export a compact conclusions table for report-ready interpretation."""
+	rows = []
+
+	if metrics_df is not None and not metrics_df.empty:
+		best = metrics_df.sort_values("RMSE").iloc[0]
+		rows.append(
+			{
+				"section": "Best Model",
+				"item": "Top performer by RMSE",
+				"value": best["model"],
+				"detail": (
+					f"RMSE={best['RMSE']:.3f}, R2={best['R2']:.3f}, "
+					f"MAPE={best['MAPE']:.3f}, AccuracyPct={best['AccuracyPct']:.2f}%"
+				),
+			}
+		)
+
+	if model_df is not None and not model_df.empty and "avg_fare" in model_df.columns:
+		numeric_df = model_df.select_dtypes(include=[np.number]).copy()
+		if "avg_fare" in numeric_df.columns:
+			corr = numeric_df.corr(numeric_only=True)["avg_fare"].drop(labels=["avg_fare"], errors="ignore")
+			corr = corr.dropna().sort_values(key=lambda s: s.abs(), ascending=False)
+			for feature_name, corr_value in corr.head(5).items():
+				rows.append(
+					{
+						"section": "Top Correlations",
+						"item": feature_name,
+						"value": f"{corr_value:.3f}",
+						"detail": "Pearson correlation with avg_fare",
+					}
+				)
+
+	linear_model = trained_models.get("Linear Regression") if trained_models else None
+	if linear_model is not None and hasattr(linear_model, "coef_"):
+		coef_df = pd.DataFrame(
+			{
+				"feature": list(X_test.columns),
+				"coefficient": linear_model.coef_,
+				"abs_coefficient": np.abs(linear_model.coef_),
+			}
+		).sort_values("abs_coefficient", ascending=False)
+		for _, row in coef_df.head(5).iterrows():
+			rows.append(
+				{
+					"section": "Linear Drivers",
+					"item": row["feature"],
+					"value": f"{row['coefficient']:.3f}",
+					"detail": "Linear coefficient (signed impact)",
+				}
+			)
+
+	if pca_model is not None and hasattr(pca_model, "components_") and hasattr(pca_model, "explained_variance_ratio_"):
+		feature_names = list(X_test.columns)
+		for i in range(min(pca_model.n_components_, 3)):
+			loadings = pd.Series(np.abs(pca_model.components_[i]), index=feature_names)
+			top_feature = loadings.idxmax()
+			rows.append(
+				{
+					"section": "PCA Components",
+					"item": f"PC{i+1} top feature",
+					"value": top_feature,
+					"detail": (
+						f"Explains {pca_model.explained_variance_ratio_[i]*100:.1f}% variance; "
+						f"loading={pca_model.components_[i][loadings.argmax()]:.3f}"
+					),
+				}
+			)
+
+	if rows:
+		pd.DataFrame(rows).to_csv(OUTPUT_DIR / "conclusions_summary.csv", index=False)
+
+
 def evaluate_model_outputs(model_results, save=True):
-	"""Evaluate modeled predictions and save core project artifacts.
-	
-	Generates:
-	- Performance metrics (RMSE, R2, MAPE, SNR)
-	- Model comparison charts (RMSE/SNR, R2/MAPE, accuracy)
-	- Predicted-vs-actual plots for both core models
-	- Key-variable histograms for hypothesis variables
-	- Linear coefficient and PCA explained-variance artifacts
-	- Time-series trend plots
-	"""
+	"""Evaluate modeled predictions and save all project artifacts."""
 	y_test = model_results["y_test"]
 	predictions = model_results["predictions"]
 	trained_models = model_results["trained_models"]
@@ -204,7 +313,8 @@ def evaluate_model_outputs(model_results, save=True):
 			ax.set_ylabel("Predicted Avg Fare ($)")
 			ax.set_title(f"Actual vs Predicted: {model_name}")
 			plt.tight_layout()
-			fig.savefig(OUTPUT_DIR / f"actual_vs_predicted_{model_name}.png", dpi=150)
+			file_slug = model_name.lower().replace(" ", "_")
+			fig.savefig(OUTPUT_DIR / f"actual_vs_predicted_{file_slug}.png", dpi=150)
 			plt.close(fig)
 
 		# 2. RMSE and SNR comparison chart
@@ -262,7 +372,12 @@ def evaluate_model_outputs(model_results, save=True):
 
 		# 5. Key-variable histograms aligned to project hypothesis variables.
 		if model_df is not None and not model_df.empty:
-			hist_cols = ["avg_fare", "load_factor", "avg_fuel_price", "passengers_db1b"]
+			hist_cols = [
+				"avg_fare",
+				"load_factor",
+				"avg_fuel_price",
+				"competition_unique_carriers",
+			]
 			hist_cols = [c for c in hist_cols if c in model_df.columns]
 			fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 			axes = axes.flatten()
@@ -282,6 +397,12 @@ def evaluate_model_outputs(model_results, save=True):
 
 		# 7. Time-aware plots for fare/load-factor/fuel trend outputs
 		_save_time_plots(model_df)
+
+		# 8. Explanatory visuals for conclusions from all data sources.
+		_save_explanatory_plots(model_df)
+
+		# 9. Compact conclusions table for report-ready interpretation.
+		_save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
 
 		print("All evaluation visualizations saved to:", OUTPUT_DIR)
 

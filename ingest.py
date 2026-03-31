@@ -5,10 +5,8 @@ Loads the raw airline CSVs, filters them to the project scope, and outputs clean
 import pandas as pd
 from pathlib import Path
 
-# Define data directory
 DATA_DIR = Path("Project Datasets")
 
-# Airport codes by state (major hubs)
 CA_AIRPORTS = ["LAX", "SFO", "SAN", "OAK", "ONT", "BUR", "SJC", "SMF", "PSP", "FAT", "BFL"]
 GA_AIRPORTS = ["ATL", "SAV", "AGS", "ABY"]
 TX_AIRPORTS = ["DFW", "IAH", "DAL", "HOU", "AUS", "SAT", "ELP", "MAF", "ABI", "AMA", "GRK"]
@@ -19,7 +17,6 @@ def load_competition_data():
 	"""Load and clean US Flights Data (2025 Q1)."""
 	file_path = DATA_DIR / "Competition (Airline Count)" / "US Flights Data (2025, Q1) - Flight Dataset.csv"
 
-	# Use chunks for the larger competition file.
 	chunks = []
 	for chunk in pd.read_csv(file_path, chunksize=100000):
 		chunk["Date"] = pd.to_datetime(chunk["Date"])
@@ -34,8 +31,6 @@ def load_competition_data():
 		df = pd.DataFrame()
 
 	if not df.empty:
-		df["Dep_Time"] = df["Dep_Time"].astype(str).str.zfill(4)
-		df["Actual_Dep"] = df["Actual_Dep"].astype(str).str.zfill(4)
 		df["Delay"] = pd.to_numeric(df["Delay"], errors="coerce")
 		df["Cancelled"] = df["Cancelled"].astype(int)
 
@@ -113,6 +108,12 @@ def load_t100_data(state):
 
 def preprocess_all_data(output_dir=Path("cleaned_data")):
 	"""Load, filter, and persist all cleaned datasets."""
+	print("Loading competition data...")
+	competition_df = load_competition_data()
+
+	print("Loading delay data...")
+	delay_df = load_delay_data()
+
 	print("Loading DB1B data...")
 	db1b_df = pd.concat(
 		[load_db1b_data("CA"), load_db1b_data("GA"), load_db1b_data("TX")],
@@ -129,6 +130,8 @@ def preprocess_all_data(output_dir=Path("cleaned_data")):
 	)
 
 	output_dir.mkdir(exist_ok=True)
+	competition_df.to_csv(output_dir / "competition_cleaned.csv", index=False)
+	delay_df.to_csv(output_dir / "delay_cleaned.csv", index=False)
 	db1b_df.to_csv(output_dir / "db1b_cleaned.csv", index=False)
 	fuel_df.to_csv(output_dir / "fuel_cleaned.csv", index=False)
 	t100_df.to_csv(output_dir / "t100_cleaned.csv", index=False)
@@ -136,6 +139,8 @@ def preprocess_all_data(output_dir=Path("cleaned_data")):
 	print("Preprocessing complete. Cleaned datasets saved to 'cleaned_data' folder.")
 
 	return {
+		"competition": competition_df,
+		"delay": delay_df,
 		"db1b": db1b_df,
 		"fuel": fuel_df,
 		"t100": t100_df,

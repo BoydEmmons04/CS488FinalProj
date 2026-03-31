@@ -1,0 +1,15 @@
+section,item,value,detail
+Best Model,Top performer by RMSE,Linear Regression,"RMSE=63.076, R2=0.317, MAPE=0.202, AccuracyPct=79.78%"
+Top Correlations,market_distance,0.516,Pearson correlation with avg_fare
+Top Correlations,is_saturated,0.185,Pearson correlation with avg_fare
+Top Correlations,route_late_aircraft_delay_share,-0.144,Pearson correlation with avg_fare
+Top Correlations,dest_late_aircraft_delay_share,-0.122,Pearson correlation with avg_fare
+Top Correlations,route_avg_arr_delay_rate,0.121,Pearson correlation with avg_fare
+Linear Drivers,route_weather_delay_share,4569.463,Linear coefficient (signed impact)
+Linear Drivers,route_avg_arr_delay_rate,-2850.897,Linear coefficient (signed impact)
+Linear Drivers,route_nas_delay_share,1414.754,Linear coefficient (signed impact)
+Linear Drivers,route_avg_cancel_rate,-1223.746,Linear coefficient (signed impact)
+Linear Drivers,route_late_aircraft_delay_share,760.774,Linear coefficient (signed impact)
+PCA Components,PC1 top feature,load_factor,Explains 30.8% variance; loading=0.378
+PCA Components,PC2 top feature,route_nas_delay_share,Explains 17.1% variance; loading=0.547
+PCA Components,PC3 top feature,competition_flights,Explains 13.5% variance; loading=0.328

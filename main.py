@@ -17,9 +17,6 @@ def run_pipeline():
 
     print("Pipeline complete.")
     print(f"Analysis table rows: {len(analysis_df):,}")
-    print("Saved to cleaned_data/analysis_table.csv")
-    print("Model outputs saved to outputs/modeling/")
-    print("Evaluation outputs saved to outputs/evaluation/")
 
     best = metrics_df.iloc[0]
     accuracy_text = ""

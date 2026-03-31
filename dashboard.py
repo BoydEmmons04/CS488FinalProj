@@ -96,11 +96,15 @@ def main():
 		image_files = [
 			MODEL_DIR / "correlation_heatmap.png",
 			MODEL_DIR / "load_factor_vs_airfare.png",
+			MODEL_DIR / "competition_vs_airfare.png",
+			MODEL_DIR / "delay_rate_vs_airfare.png",
 			MODEL_DIR / "correlation_focus.csv",
 			EVAL_DIR / "rmse_snr_comparison.png",
 			EVAL_DIR / "r2_mape_comparison.png",
 			EVAL_DIR / "accuracy_comparison.png",
 			EVAL_DIR / "key_variable_histograms.png",
+			EVAL_DIR / "feature_relationships_vs_fare.png",
+			EVAL_DIR / "delay_cause_composition.png",
 			EVAL_DIR / "pca_explained_variance.png",
 			EVAL_DIR / "fare_load_factor_over_time.png",
 			EVAL_DIR / "fuel_price_over_time.png",
@@ -114,7 +118,8 @@ def main():
 				st.dataframe(pd.read_csv(image_path), use_container_width=True)
 
 		for model_name in metrics_df["model"]:
-			scatter_path = EVAL_DIR / f"actual_vs_predicted_{model_name}.png"
+			file_slug = model_name.lower().replace(" ", "_")
+			scatter_path = EVAL_DIR / f"actual_vs_predicted_{file_slug}.png"
 			if scatter_path.exists():
 				st.image(str(scatter_path), caption=scatter_path.name, use_container_width=True)
 
@@ -124,14 +129,13 @@ def main():
 			"Linear Coefficients": EVAL_DIR / "feature_importance_linear.csv",
 			"PCA Explained Variance": EVAL_DIR / "pca_explained_variance.csv",
 			"Time Summary": EVAL_DIR / "time_series_summary.csv",
+			"Conclusions Summary": EVAL_DIR / "conclusions_summary.csv",
 		}
 
 		for label, file_path in importance_files.items():
 			if file_path.exists():
 				st.markdown(f"**{label}**")
 				st.dataframe(pd.read_csv(file_path), use_container_width=True)
-
-		st.info("Artifacts in this tab are aligned to the required model set: Correlation analysis, Linear Regression, and PCA.")
 
 
 if __name__ == "__main__":

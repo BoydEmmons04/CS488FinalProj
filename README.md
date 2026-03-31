@@ -44,7 +44,12 @@ dashboard.py   # Streamlit viewer for outputs
 
 ## Data Flow
 
-1. Raw data in `Project Datasets/`
+1. Raw data in `Project Datasets/`:
+	- Competition (Airline Count)
+	- DB1B Market Airline Ticket Data
+	- Flight Delays (Delay Cause)
+	- Fuel Prices
+	- T-100 (Load Factor)
 2. Cleaned data written to `cleaned_data/`
 3. Modeling artifacts written to `outputs/modeling/`
 4. Evaluation artifacts written to `outputs/evaluation/`
@@ -56,7 +61,9 @@ Modeling outputs:
 1. `outputs/modeling/correlation_focus.csv`
 2. `outputs/modeling/correlation_heatmap.png`
 3. `outputs/modeling/load_factor_vs_airfare.png`
-4. `outputs/modeling/test_predictions.csv`
+4. `outputs/modeling/competition_vs_airfare.png`
+5. `outputs/modeling/delay_rate_vs_airfare.png`
+6. `outputs/modeling/test_predictions.csv`
 
 Evaluation outputs:
 
@@ -72,3 +79,5 @@ Evaluation outputs:
 10. `outputs/evaluation/fare_load_factor_over_time.png`
 11. `outputs/evaluation/fuel_price_over_time.png`
 12. `outputs/evaluation/time_series_summary.csv`
+13. `outputs/evaluation/feature_relationships_vs_fare.png`
+14. `outputs/evaluation/delay_cause_composition.png`

@@ -1,6 +1,4 @@
-"""
-Computes required regression metrics and produces comparison plots, variable summaries, predicted‑vs‑actual charts, PCA variance views, and time‑series visuals.
-"""
+"""Compute evaluation metrics and generate concise, grouped output artifacts."""
 
 from pathlib import Path
 
@@ -13,6 +11,120 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, 
 
 
 OUTPUT_DIR = Path("outputs") / "evaluation"
+
+
+def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
+	"""Write a dataframe to a readable plain-text table file."""
+	lines = []
+	df_display = df.reset_index() if index else df.copy()
+
+	if title:
+		lines.append(title)
+		lines.append("=" * len(title))
+
+	lines.append(f"Rows: {len(df_display)} | Columns: {len(df_display.columns)}")
+	lines.append("")
+
+	columns = list(df_display.columns)
+	for start in range(0, len(columns), max_cols_per_block):
+		block_cols = columns[start : start + max_cols_per_block]
+		block_df = df_display[block_cols]
+		lines.append(f"[Columns {start + 1}-{start + len(block_cols)} of {len(columns)}]")
+		lines.append("-" * 80)
+		lines.append(block_df.to_string(index=False))
+		lines.append("")
+
+	path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_model=None):
+	"""Save a single plain-text report with table-style summaries."""
+	lines = []
+	lines.append("AIRLINE FARE MODEL REPORT SUMMARY")
+	lines.append("=" * 80)
+	lines.append("")
+
+	lines.append("[1] MODEL METRICS")
+	lines.append("-" * 80)
+	if metrics_df is not None and not metrics_df.empty:
+		lines.append(metrics_df.to_string(index=False))
+	else:
+		lines.append("No model metrics available.")
+	lines.append("")
+
+	top_corr_df = pd.DataFrame()
+	if model_df is not None and not model_df.empty and "avg_fare" in model_df.columns:
+		numeric_df = model_df.select_dtypes(include=[np.number]).copy()
+		if "avg_fare" in numeric_df.columns:
+			corr = numeric_df.corr(numeric_only=True)["avg_fare"].drop(labels=["avg_fare"], errors="ignore")
+			corr = corr.dropna().sort_values(key=lambda s: s.abs(), ascending=False)
+			top_corr_df = corr.head(10).reset_index()
+			top_corr_df.columns = ["Feature", "Corr_with_AvgFare"]
+			top_corr_df["Corr_with_AvgFare"] = top_corr_df["Corr_with_AvgFare"].round(4)
+
+	lines.append("[2] TOP CORRELATIONS WITH AVERAGE FARE")
+	lines.append("-" * 80)
+	if not top_corr_df.empty:
+		lines.append(top_corr_df.to_string(index=False))
+	else:
+		lines.append("No correlation summary available.")
+	lines.append("")
+
+	linear_driver_df = pd.DataFrame()
+	linear_model = trained_models.get("Linear Regression") if trained_models else None
+	if linear_model is not None and hasattr(linear_model, "coef_"):
+		linear_driver_df = pd.DataFrame(
+			{
+				"Feature": list(X_test.columns),
+				"Coefficient": linear_model.coef_,
+				"Abs_Coefficient": np.abs(linear_model.coef_),
+			}
+		).sort_values("Abs_Coefficient", ascending=False)
+		linear_driver_df.insert(0, "Rank", range(1, len(linear_driver_df) + 1))
+		linear_driver_df = linear_driver_df.head(10).round(4)
+
+	lines.append("[3] TOP LINEAR REGRESSION DRIVERS")
+	lines.append("-" * 80)
+	if not linear_driver_df.empty:
+		lines.append(linear_driver_df.to_string(index=False))
+	else:
+		lines.append("No linear-regression driver summary available.")
+	lines.append("")
+
+	pca_table_df = pd.DataFrame()
+	if pca_model is not None and hasattr(pca_model, "explained_variance_ratio_"):
+		pca_table_df = pd.DataFrame(
+			{
+				"Component": [f"PC{i + 1}" for i in range(pca_model.n_components_)],
+				"Explained_Variance": pca_model.explained_variance_ratio_,
+				"Cumulative_Variance": np.cumsum(pca_model.explained_variance_ratio_),
+			}
+		)
+		pca_table_df.insert(0, "Rank", range(1, len(pca_table_df) + 1))
+		pca_table_df = pca_table_df.head(10).round(4)
+
+	lines.append("[4] PCA EXPLAINED VARIANCE")
+	lines.append("-" * 80)
+	if not pca_table_df.empty:
+		lines.append(pca_table_df.to_string(index=False))
+	else:
+		lines.append("No PCA variance summary available.")
+	lines.append("")
+
+	best_model_line = "No best model available."
+	if metrics_df is not None and not metrics_df.empty:
+		best = metrics_df.sort_values("RMSE_USD").iloc[0]
+		best_model_line = (
+			f"Best model by RMSE: {best['Model']} | RMSE={best['RMSE_USD']:.4f} | "
+			f"R2={best['R2']:.4f} | MAPE={best['MAPE']:.4f} | Accuracy={best['Accuracy_Pct']:.2f}%"
+		)
+
+	lines.append("[5] KEY TAKEAWAY")
+	lines.append("-" * 80)
+	lines.append(best_model_line)
+	lines.append("")
+
+	(OUTPUT_DIR / "report_summary_table.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _compute_metrics(y_true, y_pred):
@@ -38,70 +150,133 @@ def _add_accuracy_columns(metrics_df):
 	return metrics_df
 
 
-def _save_time_plots(model_df):
-	"""Save fare/load-factor over available time periods (handles Q1-only data)."""
+def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=None):
+	"""Save grouped panels to reduce clutter while preserving key visual information."""
+	base_colors = ["#4C78A8", "#54A24B", "#F58518", "#E45756", "#72B7B2"]
+	colors = [base_colors[i % len(base_colors)] for i in range(len(metrics_df))]
+
+	fig, axes = plt.subplots(1, 5, figsize=(22, 4.5))
+	metric_specs = [
+		("RMSE_USD", "Lower Better"),
+		("SNR", "Higher Better"),
+		("R2", "Higher Better"),
+		("MAPE", "Lower Better"),
+		("Accuracy_Pct", "Higher Better"),
+	]
+	for idx, (metric_col, hint) in enumerate(metric_specs):
+		axes[idx].bar(metrics_df["Model"], metrics_df[metric_col], color=colors)
+		axes[idx].set_title(f"{metric_col} ({hint})")
+		axes[idx].tick_params(axis="x", rotation=18)
+	fig.suptitle("Model Comparison Panel", fontsize=14)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / "model_comparison_panel.png", dpi=150)
+	plt.close(fig)
+
+	model_names = list(predictions.keys())
+	fig, axes = plt.subplots(1, len(model_names), figsize=(8 * len(model_names), 5))
+	if len(model_names) == 1:
+		axes = [axes]
+	for idx, model_name in enumerate(model_names):
+		y_pred = predictions[model_name]
+		axes[idx].scatter(y_test, y_pred, alpha=0.5, edgecolors="black", linewidths=0.2)
+		min_val = min(float(y_test.min()), float(y_pred.min()))
+		max_val = max(float(y_test.max()), float(y_pred.max()))
+		axes[idx].plot([min_val, max_val], [min_val, max_val], "k--", linewidth=1)
+		axes[idx].set_xlabel("Actual Avg Fare ($)")
+		axes[idx].set_ylabel("Predicted Avg Fare ($)")
+		axes[idx].set_title(model_name)
+	fig.suptitle("Actual vs Predicted Panel", fontsize=14)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / "actual_vs_predicted_panel.png", dpi=150)
+	plt.close(fig)
+
 	if model_df is None or model_df.empty:
 		return
 
+	fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+	axes = axes.flatten()
+
+	if "avg_fare" in model_df.columns:
+		axes[0].hist(model_df["avg_fare"], bins=35, edgecolor="black", alpha=0.75, color="#4C78A8")
+		axes[0].set_title("Distribution: avg_fare")
+		axes[0].set_xlabel("avg_fare")
+		axes[0].set_ylabel("Frequency")
+
+	if "load_factor" in model_df.columns:
+		axes[1].hist(model_df["load_factor"], bins=35, edgecolor="black", alpha=0.75, color="#54A24B")
+		axes[1].set_title("Distribution: load_factor")
+		axes[1].set_xlabel("load_factor")
+		axes[1].set_ylabel("Frequency")
+
+	if "load_factor" in model_df.columns and "avg_fare" in model_df.columns:
+		axes[2].scatter(model_df["load_factor"], model_df["avg_fare"], alpha=0.35, edgecolors="none")
+		axes[2].set_title("Load Factor vs Avg Fare")
+		axes[2].set_xlabel("load_factor")
+		axes[2].set_ylabel("avg_fare")
+
+	if "competition_unique_carriers" in model_df.columns and "avg_fare" in model_df.columns:
+		axes[3].scatter(
+			model_df["competition_unique_carriers"],
+			model_df["avg_fare"],
+			alpha=0.35,
+			edgecolors="none",
+		)
+		axes[3].set_title("Competition vs Avg Fare")
+		axes[3].set_xlabel("competition_unique_carriers")
+		axes[3].set_ylabel("avg_fare")
+	elif "route_avg_arr_delay_rate" in model_df.columns and "avg_fare" in model_df.columns:
+		axes[3].scatter(
+			model_df["route_avg_arr_delay_rate"],
+			model_df["avg_fare"],
+			alpha=0.35,
+			edgecolors="none",
+		)
+		axes[3].set_title("Delay Rate vs Avg Fare")
+		axes[3].set_xlabel("route_avg_arr_delay_rate")
+		axes[3].set_ylabel("avg_fare")
+
 	time_df = (
 		model_df.groupby(["YEAR", "QUARTER"], as_index=False)
-		.agg(
-			avg_fare=("avg_fare", "mean"),
-			avg_load_factor=("load_factor", "mean"),
-			avg_fuel_price=("avg_fuel_price", "mean"),
-		)
+		.agg(avg_fare=("avg_fare", "mean"), avg_load_factor=("load_factor", "mean"), avg_fuel_price=("avg_fuel_price", "mean"))
 		.sort_values(["YEAR", "QUARTER"])
 	)
-
 	time_df["period"] = (
 		time_df["YEAR"].astype(int).astype(str)
 		+ "-Q"
 		+ time_df["QUARTER"].astype(int).astype(str)
 	)
-	time_df.to_csv(OUTPUT_DIR / "time_series_summary.csv", index=False)
-
-	fig, ax1 = plt.subplots(figsize=(10, 5))
+	_write_table_txt(
+		OUTPUT_DIR / "time_series_summary.txt",
+		time_df.round(4),
+		title="TIME SERIES SUMMARY",
+		index=False,
+	)
 	period_idx = np.arange(len(time_df))
 	line_style = "-o" if len(time_df) > 1 else "o"
+	axes[4].plot(period_idx, time_df["avg_fare"], line_style, color="#1f77b4", label="Avg Fare")
+	axes[4].plot(period_idx, time_df["avg_load_factor"], line_style, color="#d62728", label="Avg Load")
+	axes[4].set_xticks(period_idx)
+	axes[4].set_xticklabels(time_df["period"], rotation=20)
+	axes[4].set_title("Fare & Load Over Time")
+	axes[4].legend(loc="best", fontsize=8)
 
-	ax1.plot(period_idx, time_df["avg_fare"], line_style, color="#1f77b4", label="Avg Fare")
-	ax1.set_ylabel("Average Fare ($)", color="#1f77b4")
-	ax1.tick_params(axis="y", labelcolor="#1f77b4")
-	ax1.set_xticks(period_idx)
-	ax1.set_xticklabels(time_df["period"], rotation=20)
-	ax1.set_xlabel("Time Period")
+	if pca_model is not None and hasattr(pca_model, "explained_variance_ratio_"):
+		cum_var = np.cumsum(pca_model.explained_variance_ratio_)
+		axes[5].plot(range(1, len(cum_var) + 1), cum_var, marker="o")
+		axes[5].set_ylim([0, 1.05])
+		axes[5].set_title("PCA Cumulative Variance")
+		axes[5].set_xlabel("Components")
+		axes[5].set_ylabel("Cumulative Variance")
+	else:
+		axes[5].set_visible(False)
 
-	ax2 = ax1.twinx()
-	ax2.plot(
-		period_idx,
-		time_df["avg_load_factor"],
-		line_style,
-		color="#d62728",
-		label="Avg Load Factor",
-	)
-	ax2.set_ylabel("Average Load Factor", color="#d62728")
-	ax2.tick_params(axis="y", labelcolor="#d62728")
+	for ax in axes:
+		if not ax.has_data():
+			ax.set_visible(False)
 
-	title = "Average Fare and Load Factor Over Time"
-	if len(time_df) == 1:
-		title += " (Q1-Only Scope)"
-	ax1.set_title(title)
-	fig.tight_layout()
-	fig.savefig(OUTPUT_DIR / "fare_load_factor_over_time.png", dpi=150)
-	plt.close(fig)
-
-	fig, ax = plt.subplots(figsize=(10, 5))
-	ax.plot(period_idx, time_df["avg_fuel_price"], line_style, color="#2ca02c")
-	ax.set_xticks(period_idx)
-	ax.set_xticklabels(time_df["period"], rotation=20)
-	ax.set_xlabel("Time Period")
-	ax.set_ylabel("Average Fuel Price")
-	fuel_title = "Fuel Price Over Time"
-	if len(time_df) == 1:
-		fuel_title += " (Q1-Only Scope)"
-	ax.set_title(fuel_title)
-	fig.tight_layout()
-	fig.savefig(OUTPUT_DIR / "fuel_price_over_time.png", dpi=150)
+	fig.suptitle("Data Diagnostics Panel", fontsize=14)
+	plt.tight_layout()
+	fig.savefig(OUTPUT_DIR / "data_diagnostics_panel.png", dpi=150)
 	plt.close(fig)
 
 
@@ -119,7 +294,14 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 					"abs_coefficient": np.abs(linear_model.coef_),
 				}
 			).sort_values("abs_coefficient", ascending=False)
-			coef_df.to_csv(OUTPUT_DIR / "feature_importance_linear.csv", index=False)
+			coef_df.insert(0, "rank", range(1, len(coef_df) + 1))
+			coef_df = coef_df.round(4)
+			_write_table_txt(
+				OUTPUT_DIR / "feature_importance_linear.txt",
+				coef_df,
+				title="LINEAR FEATURE IMPORTANCE",
+				index=False,
+			)
 
 	if pca_model is not None and hasattr(pca_model, "components_"):
 		component_cols = [f"PC{i + 1}" for i in range(pca_model.n_components_)]
@@ -130,73 +312,14 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 				"cumulative_explained_variance": np.cumsum(pca_model.explained_variance_ratio_),
 			}
 		)
-		explained_df.to_csv(OUTPUT_DIR / "pca_explained_variance.csv", index=False)
-
-		fig, ax = plt.subplots(figsize=(8, 5))
-		ax.plot(
-			range(1, len(explained_df) + 1),
-			explained_df["cumulative_explained_variance"],
-			marker="o",
+		explained_df.insert(0, "component_rank", range(1, len(explained_df) + 1))
+		explained_df = explained_df.round(4)
+		_write_table_txt(
+			OUTPUT_DIR / "pca_explained_variance.txt",
+			explained_df,
+			title="PCA EXPLAINED VARIANCE",
+			index=False,
 		)
-		ax.set_xlabel("Number of Components")
-		ax.set_ylabel("Cumulative Explained Variance")
-		ax.set_title("PCA Cumulative Explained Variance")
-		ax.set_ylim([0, 1.05])
-		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "pca_explained_variance.png", dpi=150)
-		plt.close(fig)
-
-
-def _save_explanatory_plots(model_df):
-	"""Save relationship plots for key explanatory variables from all datasets."""
-	if model_df is None or model_df.empty:
-		return
-
-	plot_pairs = [
-		("load_factor", "Load Factor"),
-		("competition_unique_carriers", "Competition (Unique Carriers)"),
-		("route_avg_arr_delay_rate", "Route Avg Delay Rate"),
-		("avg_fuel_price", "Average Fuel Price"),
-	]
-	available_pairs = [(c, l) for c, l in plot_pairs if c in model_df.columns]
-	if not available_pairs:
-		return
-
-	fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-	axes = axes.flatten()
-	for idx, (col, label) in enumerate(available_pairs[:4]):
-		axes[idx].scatter(model_df[col], model_df["avg_fare"], alpha=0.35, edgecolors="none")
-		axes[idx].set_xlabel(label)
-		axes[idx].set_ylabel("Average Fare ($)")
-		axes[idx].set_title(f"{label} vs Avg Fare")
-	for idx in range(len(available_pairs), 4):
-		axes[idx].set_visible(False)
-	plt.tight_layout()
-	fig.savefig(OUTPUT_DIR / "feature_relationships_vs_fare.png", dpi=150)
-	plt.close(fig)
-
-	delay_share_cols = [
-		"route_weather_delay_share",
-		"route_nas_delay_share",
-		"route_late_aircraft_delay_share",
-		"route_carrier_delay_share",
-	]
-	delay_share_cols = [c for c in delay_share_cols if c in model_df.columns]
-	if delay_share_cols:
-		mean_shares = model_df[delay_share_cols].mean().sort_values(ascending=False)
-		labels = [
-			name.replace("route_", "").replace("_delay_share", "").replace("_", " ").title()
-			for name in mean_shares.index
-		]
-		fig, ax = plt.subplots(figsize=(10, 5))
-		ax.bar(labels, mean_shares.values, color=["#E45756", "#4C78A8", "#F58518", "#72B7B2"][: len(labels)])
-		ax.set_ylabel("Average Share of Total Delay Minutes")
-		ax.set_ylim([0, 1])
-		ax.set_title("Average Delay Cause Composition (Route-Level)")
-		ax.tick_params(axis="x", rotation=20)
-		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "delay_cause_composition.png", dpi=150)
-		plt.close(fig)
 
 
 def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=None):
@@ -204,15 +327,15 @@ def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_
 	rows = []
 
 	if metrics_df is not None and not metrics_df.empty:
-		best = metrics_df.sort_values("RMSE").iloc[0]
+		best = metrics_df.sort_values("RMSE_USD").iloc[0]
 		rows.append(
 			{
 				"section": "Best Model",
 				"item": "Top performer by RMSE",
-				"value": best["model"],
+				"value": best["Model"],
 				"detail": (
-					f"RMSE={best['RMSE']:.3f}, R2={best['R2']:.3f}, "
-					f"MAPE={best['MAPE']:.3f}, AccuracyPct={best['AccuracyPct']:.2f}%"
+					f"RMSE={best['RMSE_USD']:.3f}, R2={best['R2']:.3f}, "
+					f"MAPE={best['MAPE']:.3f}, AccuracyPct={best['Accuracy_Pct']:.2f}%"
 				),
 			}
 		)
@@ -269,7 +392,12 @@ def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_
 			)
 
 	if rows:
-		pd.DataFrame(rows).to_csv(OUTPUT_DIR / "conclusions_summary.csv", index=False)
+		_write_table_txt(
+			OUTPUT_DIR / "conclusions_summary.txt",
+			pd.DataFrame(rows),
+			title="CONCLUSIONS SUMMARY",
+			index=False,
+		)
 
 
 def evaluate_model_outputs(model_results, save=True):
@@ -289,114 +417,33 @@ def evaluate_model_outputs(model_results, save=True):
 
 	metrics_df = pd.DataFrame(metric_rows).sort_values("RMSE").reset_index(drop=True)
 	metrics_df = _add_accuracy_columns(metrics_df)
+	metrics_df = metrics_df[["model", "RMSE", "MAPE", "R2", "SNR", "AccuracyPct", "R2Pct"]].round(4)
+	metrics_df = metrics_df.rename(
+		columns={
+			"model": "Model",
+			"RMSE": "RMSE_USD",
+			"MAPE": "MAPE",
+			"R2": "R2",
+			"SNR": "SNR",
+			"AccuracyPct": "Accuracy_Pct",
+			"R2Pct": "R2_Pct",
+		}
+	)
 
 	if save:
 		OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-		metrics_df.to_csv(OUTPUT_DIR / "model_metrics.csv", index=False)
-
-		# Actual vs predicted scatter for each model
-		for model_name, y_pred in predictions.items():
-			fig, ax = plt.subplots(figsize=(8, 6))
-			ax.scatter(y_test, y_pred, alpha=0.5, edgecolors="black", linewidths=0.2)
-			min_val = min(float(y_test.min()), float(y_pred.min()))
-			max_val = max(float(y_test.max()), float(y_pred.max()))
-			ax.plot([min_val, max_val], [min_val, max_val], "k--", linewidth=1)
-			ax.set_xlabel("Actual Avg Fare ($)")
-			ax.set_ylabel("Predicted Avg Fare ($)")
-			ax.set_title(f"Actual vs Predicted: {model_name}")
-			plt.tight_layout()
-			file_slug = model_name.lower().replace(" ", "_")
-			fig.savefig(OUTPUT_DIR / f"actual_vs_predicted_{file_slug}.png", dpi=150)
-			plt.close(fig)
-
-		# RMSE and SNR comparison chart
-		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-		
-		base_colors = ["#4C78A8", "#54A24B", "#F58518"]
-		colors = [base_colors[i % len(base_colors)] for i in range(len(metrics_df))]
-		ax1.bar(metrics_df["model"], metrics_df["RMSE"], color=colors)
-		ax1.set_title("Model RMSE Comparison (Lower is Better)")
-		ax1.set_ylabel("RMSE ($)")
-		ax1.set_xlabel("Model")
-		ax1.tick_params(axis='x', rotation=20)
-		
-		ax2.bar(metrics_df["model"], metrics_df["SNR"], color=colors)
-		ax2.set_title("Model SNR Comparison (Higher is Better)")
-		ax2.set_ylabel("Signal-to-Noise Ratio")
-		ax2.set_xlabel("Model")
-		ax2.tick_params(axis='x', rotation=20)
-		
-		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "rmse_snr_comparison.png", dpi=150)
-		plt.close(fig)
-
-		# R2 and MAPE comparison
-		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-		
-		ax1.bar(metrics_df["model"], metrics_df["R2"], color=colors)
-		ax1.set_title("Model R² Comparison (Higher is Better)")
-		ax1.set_ylabel("R² Score")
-		ax1.set_xlabel("Model")
-		ax1.set_ylim([0, 1])
-		ax1.tick_params(axis='x', rotation=20)
-		
-		ax2.bar(metrics_df["model"], metrics_df["MAPE"], color=colors)
-		ax2.set_title("Model MAPE Comparison (Lower is Better)")
-		ax2.set_ylabel("Mean Absolute Percentage Error")
-		ax2.set_xlabel("Model")
-		ax2.tick_params(axis='x', rotation=20)
-		
-		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "r2_mape_comparison.png", dpi=150)
-		plt.close(fig)
-
-		# Model accuracy comparison
-		fig, ax = plt.subplots(figsize=(10, 5))
-		ax.bar(metrics_df["model"], metrics_df["AccuracyPct"], color="#2E8B57")
-		ax.set_title("Model Accuracy % (100 - MAPE)")
-		ax.set_ylabel("Accuracy (%)")
-		ax.set_xlabel("Model")
-		ax.set_ylim([0, 100])
-		ax.tick_params(axis="x", rotation=20)
-		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "accuracy_comparison.png", dpi=150)
-		plt.close(fig)
-
-		# Key-variable histograms for project analysis
-		if model_df is not None and not model_df.empty:
-			hist_cols = [
-				"avg_fare",
-				"load_factor",
-				"avg_fuel_price",
-				"competition_unique_carriers",
-			]
-			hist_cols = [c for c in hist_cols if c in model_df.columns]
-			fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-			axes = axes.flatten()
-			for idx, col in enumerate(hist_cols):
-				axes[idx].hist(model_df[col], bins=35, edgecolor="black", alpha=0.75, color="#4C78A8")
-				axes[idx].set_title(f"Distribution: {col}")
-				axes[idx].set_xlabel(col)
-				axes[idx].set_ylabel("Frequency")
-			for idx in range(len(hist_cols), 4):
-				axes[idx].set_visible(False)
-			plt.tight_layout()
-			fig.savefig(OUTPUT_DIR / "key_variable_histograms.png", dpi=150)
-			plt.close(fig)
-
-		# Linear and PCA artifacts
+		_write_table_txt(
+			OUTPUT_DIR / "model_metrics.txt",
+			metrics_df,
+			title="MODEL METRICS",
+			index=False,
+		)
+		_save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=pca_model)
 		_save_feature_importance_artifacts(trained_models, X_test, pca_model=pca_model)
-
-		# Time series plots
-		_save_time_plots(model_df)
-
-		# Explanatory variable plots
-		_save_explanatory_plots(model_df)
-
-		# Conclusions table
 		_save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
+		_save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
 
-		print("All evaluation visualizations saved to:", OUTPUT_DIR)
+		print("Cleaned evaluation artifacts saved to:", OUTPUT_DIR)
 
 	return metrics_df

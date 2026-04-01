@@ -189,7 +189,6 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		fig.savefig(OUTPUT_DIR / "load_factor_vs_airfare.png", dpi=150)
 		plt.close(fig)
 
-		# Competition intensity versus fare.
 		if "competition_unique_carriers" in model_df.columns:
 			fig, ax = plt.subplots(figsize=(8, 6))
 			ax.scatter(
@@ -221,7 +220,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 			fig.savefig(OUTPUT_DIR / "delay_rate_vs_airfare.png", dpi=150)
 			plt.close(fig)
 
-		# Keep only compact prediction outputs needed for review/dashboard.
+		# Export key predictions and features for analysis.
 		pred_export_cols = [
 			"actual_avg_fare",
 			"pred_linear_regression",
@@ -253,7 +252,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 
 
 def predict_fares(input_df=None, model_name="Linear Regression"):
-	"""Convenience prediction helper for dashboard/demo use."""
+	"""Generate predictions on input data using trained models."""
 	analysis_df = load_analysis_table() if input_df is None else input_df
 	results = run_modeling_pipeline(analysis_df=analysis_df, save=False)
 	if model_name == "linear_regression":

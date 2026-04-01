@@ -138,13 +138,6 @@ def preprocess_all_data(output_dir=Path("cleaned_data")):
 
 	print("Preprocessing complete. Cleaned datasets saved to 'cleaned_data' folder.")
 
-	return {
-		"competition": competition_df,
-		"delay": delay_df,
-		"db1b": db1b_df,
-		"fuel": fuel_df,
-		"t100": t100_df,
-	}
 
 
 if __name__ == "__main__":

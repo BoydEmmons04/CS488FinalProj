@@ -248,7 +248,3 @@ def build_analysis_table(save=True):
 
 if __name__ == "__main__":
     build_analysis_table(save=True)
-    print(
-        f"Analysis table created with {len(analysis_df):,} rows "
-        f"and saved to {CLEANED_DIR / 'analysis_table.csv'}."
-    )

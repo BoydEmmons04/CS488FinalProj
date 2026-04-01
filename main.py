@@ -27,11 +27,6 @@ def run_pipeline():
         f"{best['model']} | RMSE={best['RMSE']:.3f} | R2={best['R2']:.3f} | MAPE={best['MAPE']:.3f}{accuracy_text}"
     )
 
-    return {
-        "analysis_df": analysis_df,
-        "metrics_df": metrics_df,
-    }
-
 
 if __name__ == "__main__":
     run_pipeline()

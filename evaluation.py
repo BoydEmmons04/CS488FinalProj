@@ -16,14 +16,7 @@ OUTPUT_DIR = Path("outputs") / "evaluation"
 
 
 def _compute_metrics(y_true, y_pred):
-	"""Return standard regression metrics required in the project rubric.
-	
-	Metrics:
-	- RMSE: Root Mean Squared Error
-	- MAPE: Mean Absolute Percentage Error
-	- R2: Coefficient of Determination
-	- SNR: Signal-to-Noise Ratio (ratio of signal power to noise power)
-	"""
+	"""Compute RMSE, MAPE, R2, and SNR metrics."""
 	rmse = mean_squared_error(y_true, y_pred) ** 0.5
 	mape = mean_absolute_percentage_error(y_true, y_pred)
 	r2 = r2_score(y_true, y_pred)
@@ -302,7 +295,7 @@ def evaluate_model_outputs(model_results, save=True):
 
 		metrics_df.to_csv(OUTPUT_DIR / "model_metrics.csv", index=False)
 
-		# 1. Actual vs predicted scatter for each model
+		# Actual vs predicted scatter for each model
 		for model_name, y_pred in predictions.items():
 			fig, ax = plt.subplots(figsize=(8, 6))
 			ax.scatter(y_test, y_pred, alpha=0.5, edgecolors="black", linewidths=0.2)
@@ -317,7 +310,7 @@ def evaluate_model_outputs(model_results, save=True):
 			fig.savefig(OUTPUT_DIR / f"actual_vs_predicted_{file_slug}.png", dpi=150)
 			plt.close(fig)
 
-		# 2. RMSE and SNR comparison chart
+		# RMSE and SNR comparison chart
 		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 		
 		base_colors = ["#4C78A8", "#54A24B", "#F58518"]
@@ -338,7 +331,7 @@ def evaluate_model_outputs(model_results, save=True):
 		fig.savefig(OUTPUT_DIR / "rmse_snr_comparison.png", dpi=150)
 		plt.close(fig)
 
-		# 3. R2 and MAPE comparison
+		# R2 and MAPE comparison
 		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 		
 		ax1.bar(metrics_df["model"], metrics_df["R2"], color=colors)
@@ -358,7 +351,7 @@ def evaluate_model_outputs(model_results, save=True):
 		fig.savefig(OUTPUT_DIR / "r2_mape_comparison.png", dpi=150)
 		plt.close(fig)
 
-		# 4. User-facing model accuracy comparison
+		# Model accuracy comparison
 		fig, ax = plt.subplots(figsize=(10, 5))
 		ax.bar(metrics_df["model"], metrics_df["AccuracyPct"], color="#2E8B57")
 		ax.set_title("Model Accuracy % (100 - MAPE)")
@@ -370,7 +363,7 @@ def evaluate_model_outputs(model_results, save=True):
 		fig.savefig(OUTPUT_DIR / "accuracy_comparison.png", dpi=150)
 		plt.close(fig)
 
-		# 5. Key-variable histograms aligned to project hypothesis variables.
+		# Key-variable histograms for project analysis
 		if model_df is not None and not model_df.empty:
 			hist_cols = [
 				"avg_fare",
@@ -392,16 +385,16 @@ def evaluate_model_outputs(model_results, save=True):
 			fig.savefig(OUTPUT_DIR / "key_variable_histograms.png", dpi=150)
 			plt.close(fig)
 
-		# 6. Linear/PCA artifact tables and plot.
+		# Linear and PCA artifacts
 		_save_feature_importance_artifacts(trained_models, X_test, pca_model=pca_model)
 
-		# 7. Time-aware plots for fare/load-factor/fuel trend outputs
+		# Time series plots
 		_save_time_plots(model_df)
 
-		# 8. Explanatory visuals for conclusions from all data sources.
+		# Explanatory variable plots
 		_save_explanatory_plots(model_df)
 
-		# 9. Compact conclusions table for report-ready interpretation.
+		# Conclusions table
 		_save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
 
 		print("All evaluation visualizations saved to:", OUTPUT_DIR)

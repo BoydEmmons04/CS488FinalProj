@@ -74,11 +74,13 @@ def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_mod
 	linear_driver_df = pd.DataFrame()
 	linear_model = trained_models.get("Linear Regression") if trained_models else None
 	if linear_model is not None and hasattr(linear_model, "coef_"):
+		coef = np.ravel(linear_model.coef_)
+		n = min(len(X_test.columns), len(coef))
 		linear_driver_df = pd.DataFrame(
 			{
-				"Feature": list(X_test.columns),
-				"Coefficient": linear_model.coef_,
-				"Abs_Coefficient": np.abs(linear_model.coef_),
+				"Feature": list(X_test.columns)[:n],
+				"Coefficient": coef[:n],
+				"Abs_Coefficient": np.abs(coef[:n]),
 			}
 		).sort_values("Abs_Coefficient", ascending=False)
 		linear_driver_df.insert(0, "Rank", range(1, len(linear_driver_df) + 1))
@@ -291,11 +293,13 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 	if "Linear Regression" in trained_models:
 		linear_model = trained_models["Linear Regression"]
 		if hasattr(linear_model, "coef_"):
+			coef = np.ravel(linear_model.coef_)
+			n = min(len(feature_cols), len(coef))
 			coef_df = pd.DataFrame(
 				{
-					"feature": feature_cols,
-					"coefficient": linear_model.coef_,
-					"abs_coefficient": np.abs(linear_model.coef_),
+					"feature": feature_cols[:n],
+					"coefficient": coef[:n],
+					"abs_coefficient": np.abs(coef[:n]),
 				}
 			# Sort by absolute value so the biggest drivers show up first regardless of sign.
 			).sort_values("abs_coefficient", ascending=False)

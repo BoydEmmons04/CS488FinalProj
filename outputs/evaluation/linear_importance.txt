@@ -1,0 +1,26 @@
+LINEAR FEATURE IMPORTANCE
+=========================
+Rows: 19 | Columns: 4
+
+[Columns 1-4 of 4]
+--------------------------------------------------------------------------------
+ rank                         feature  coefficient  abs_coefficient
+    1       route_weather_delay_share    4569.4631        4569.4631
+    2        route_avg_arr_delay_rate   -2850.8974        2850.8974
+    3           route_nas_delay_share    1414.7537        1414.7537
+    4           route_avg_cancel_rate   -1223.7460        1223.7460
+    5 route_late_aircraft_delay_share     760.7742         760.7742
+    6       route_carrier_delay_share     425.7928         425.7928
+    7         competition_cancel_rate     122.2231         122.2231
+    8        competition_delay15_rate     -18.9475          18.9475
+    9                    is_saturated      10.6641          10.6641
+   10           route_avg_load_factor      -8.4439           8.4439
+   11                 lag_load_factor      -8.4439           8.4439
+   12           rolling_load_factor_2      -8.4439           8.4439
+   13                     load_factor      -8.4439           8.4439
+   14     competition_unique_carriers      -7.5819           7.5819
+   15                 market_distance       0.0719           0.0719
+   16           competition_avg_delay       0.0291           0.0291
+   17             competition_flights       0.0184           0.0184
+   18                 passengers_db1b      -0.0011           0.0011
+   19                  avg_fuel_price       0.0000           0.0000

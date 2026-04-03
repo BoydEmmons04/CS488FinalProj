@@ -18,7 +18,7 @@ OUTPUT_DIR = Path("outputs") / "modeling"
 
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	# Save a dataframe as a readable text table.
+	# Save a dataframe as an organized table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 
@@ -55,12 +55,14 @@ def _build_model_frame(analysis_df):
 	df = df.sort_values(["route", "YEAR", "QUARTER"]).reset_index(drop=True)
 
 	# Route context features.
+	# Sort by route+time first so lag and rolling calculations are in the right order.
 	df["route_avg_load_factor"] = df.groupby("route")["load_factor"].transform("mean")
 	df["lag_load_factor"] = df.groupby("route")["load_factor"].shift(1)
 	df["rolling_load_factor_2"] = (
 		df.groupby("route")["load_factor"].transform(lambda s: s.rolling(2, min_periods=1).mean())
 	)
 
+	# First period has no prior quarter, so fall back to the current value.
 	if "lag_load_factor" in df.columns:
 		df["lag_load_factor"] = df["lag_load_factor"].fillna(df["load_factor"])
 	if "rolling_load_factor_2" in df.columns:
@@ -92,6 +94,7 @@ def _build_model_frame(analysis_df):
 		median = df[col].median()
 		if pd.isna(median):
 			median = 0.0
+		# Median imputation is more robust than mean for skewed fare/delay data.
 		df[col] = df[col].fillna(median)
 	if "is_saturated" in df.columns:
 		df["is_saturated"] = df["is_saturated"].fillna(0).astype(int)
@@ -140,6 +143,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	X = model_df[feature_cols]
 	y = model_df[target_col]
 
+	# 80/20 split; random_state fixed so results are reproducible.
 	X_train, X_test, y_train, y_test = train_test_split(
 		X, y, test_size=test_size, random_state=random_state
 	)
@@ -148,10 +152,12 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	linear_model.fit(X_train, y_train)
 
 	# Model 2: PCA features, then linear regression.
+	# Must scale before PCA — PCA is sensitive to feature magnitude.
 	scaler = StandardScaler()
 	X_train_scaled = scaler.fit_transform(X_train)
 	X_test_scaled = scaler.transform(X_test)
 
+	# n_components=0.95 keeps however many components explain 95% of variance.
 	pca = PCA(n_components=0.95, random_state=random_state)
 	X_train_pca = pca.fit_transform(X_train_scaled)
 	X_test_pca = pca.transform(X_test_scaled)

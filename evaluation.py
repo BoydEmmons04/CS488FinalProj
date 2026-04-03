@@ -146,6 +146,7 @@ def _compute_metrics(y_true, y_pred):
 
 
 def _add_accuracy_columns(metrics_df):
+	# Convert MAPE to a 0-100% accuracy score; clip so it never goes negative.
 	metrics_df["AccuracyPct"] = ((1.0 - metrics_df["MAPE"]) * 100.0).clip(lower=0.0, upper=100.0)
 	metrics_df["R2Pct"] = (metrics_df["R2"] * 100.0).clip(lower=0.0, upper=100.0)
 	return metrics_df
@@ -182,6 +183,7 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 		axes[idx].scatter(y_test, y_pred, alpha=0.5, edgecolors="black", linewidths=0.2)
 		min_val = min(float(y_test.min()), float(y_pred.min()))
 		max_val = max(float(y_test.max()), float(y_pred.max()))
+		# Dashed diagonal = perfect predictions; points clustered around it = good fit.
 		axes[idx].plot([min_val, max_val], [min_val, max_val], "k--", linewidth=1)
 		axes[idx].set_xlabel("Actual Avg Fare ($)")
 		axes[idx].set_ylabel("Predicted Avg Fare ($)")
@@ -241,6 +243,7 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 		.agg(avg_fare=("avg_fare", "mean"), avg_load_factor=("load_factor", "mean"), avg_fuel_price=("avg_fuel_price", "mean"))
 		.sort_values(["YEAR", "QUARTER"])
 	)
+	# Label each point as YYYY-QN for the x-axis tick.
 	time_df["period"] = (
 		time_df["YEAR"].astype(int).astype(str)
 		+ "-Q"
@@ -294,6 +297,7 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 					"coefficient": linear_model.coef_,
 					"abs_coefficient": np.abs(linear_model.coef_),
 				}
+			# Sort by absolute value so the biggest drivers show up first regardless of sign.
 			).sort_values("abs_coefficient", ascending=False)
 			coef_df.insert(0, "rank", range(1, len(coef_df) + 1))
 			coef_df = coef_df.round(4)
@@ -416,6 +420,7 @@ def evaluate_model_outputs(model_results, save=True):
 		row.update(_compute_metrics(y_test, y_pred))
 		metric_rows.append(row)
 
+	# Sort by RMSE so the best model is always row 0.
 	metrics_df = pd.DataFrame(metric_rows).sort_values("RMSE").reset_index(drop=True)
 	metrics_df = _add_accuracy_columns(metrics_df)
 	metrics_df = metrics_df[["model", "RMSE", "MAPE", "R2", "SNR", "AccuracyPct", "R2Pct"]].round(4)

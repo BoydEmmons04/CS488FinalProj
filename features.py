@@ -11,7 +11,7 @@ CLEANED_DIR = Path("cleaned_data")
 
 
 def _safe_divide(numerator, denominator):
-    # Safe divide helper for rate columns.
+    # Safe divide — zeros become NaN, not inf.
     denominator = denominator.where(denominator != 0)
     return numerator / denominator
 
@@ -35,6 +35,7 @@ def aggregate_competition_routes(comp_df):
     comp_df["QUARTER"] = comp_df["Date"].dt.quarter
     comp_df["Delay"] = pd.to_numeric(comp_df["Delay"], errors="coerce")
     comp_df["Cancelled"] = pd.to_numeric(comp_df["Cancelled"], errors="coerce").fillna(0)
+    # 15 min is the FAA/BTS standard for a reportable delay.
     comp_df["is_delayed_15"] = (comp_df["Delay"] >= 15).astype(int)
 
     return (
@@ -53,6 +54,7 @@ def aggregate_competition_routes(comp_df):
 def aggregate_delay_airport_quarter(delay_df):
     # Airport delay/cancel rates by quarter.
     delay_df = delay_df.copy()
+# BTS delay data only has month, not quarter.
     delay_df["QUARTER"] = ((delay_df["month"] - 1) // 3) + 1
 
     agg_df = (
@@ -151,6 +153,7 @@ def build_analysis_table(save=True):
     fuel_quarterly = aggregate_fuel_quarterly(datasets["fuel"])
 
     # Join route fares with traffic, competition, and fuel.
+    # Inner on T-100 — only keep routes with both fare and traffic data.
     analysis_df = db1b_routes.merge(
         t100_routes,
         on=["YEAR", "QUARTER", "ORIGIN", "DEST"],
@@ -158,7 +161,7 @@ def build_analysis_table(save=True):
     ).merge(
         competition_routes,
         on=["YEAR", "QUARTER", "ORIGIN", "DEST"],
-        how="left",
+        how="left",  # routes with no competition entry are still valid
     ).merge(
         fuel_quarterly,
         on=["YEAR", "QUARTER"],
@@ -231,9 +234,11 @@ def build_analysis_table(save=True):
         "competition_delay15_rate",
     ]:
         if col in analysis_df.columns:
+            # NaN here means no competition on that route.
             analysis_df[col] = analysis_df[col].fillna(0)
 
     analysis_df["route"] = analysis_df["ORIGIN"] + "-" + analysis_df["DEST"]
+    # load_factor >= 0.8 = saturated route.
     analysis_df["is_saturated"] = (analysis_df["load_factor"] >= 0.8).astype(int)
 
     analysis_df = analysis_df.sort_values(

@@ -16,6 +16,7 @@ def load_competition_data():
 	# Competition flights for 2025 Q1 and our airport list.
 	file_path = DATA_DIR / "Competition (Airline Count)" / "US Flights Data (2025, Q1) - Flight Dataset.csv"
 
+	# Large file — read in chunks.
 	chunks = []
 	for chunk in pd.read_csv(file_path, chunksize=100000):
 		chunk["Date"] = pd.to_datetime(chunk["Date"])
@@ -57,6 +58,7 @@ def load_delay_data():
 	df = df[(df["year"] == 2025) & (df["month"].isin([1, 2, 3]))]
 	df = df[df["airport"].isin(TARGET_AIRPORTS)]
 
+	# BTS exports these as strings with missing values; cast them all at once.
 	numeric_cols = [
 		"arr_flights",
 		"arr_del15",

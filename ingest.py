@@ -1,5 +1,5 @@
 # Filename: ingest.py
-# Purpose: Read raw airline CSVs, keep the project slice, and write cleaned files.
+# Purpose: Load raw airline datasets, keep the project time/airport scope, and write cleaned CSVs.
 
 import pandas as pd
 from pathlib import Path
@@ -13,10 +13,10 @@ TARGET_AIRPORTS = set(CA_AIRPORTS + GA_AIRPORTS + TX_AIRPORTS)
 
 
 def load_competition_data():
-	# Competition flights for 2025 Q1 and our airport list.
+	# Load competition flights for Q1 and the target airports.
 	file_path = DATA_DIR / "Competition (Airline Count)" / "US Flights Data (2025, Q1) - Flight Dataset.csv"
 
-	# Large file — read in chunks.
+	# Read in chunks because the file is large.
 	chunks = []
 	for chunk in pd.read_csv(file_path, chunksize=100000):
 		chunk["Date"] = pd.to_datetime(chunk["Date"])
@@ -38,7 +38,7 @@ def load_competition_data():
 
 
 def load_db1b_data(state):
-	# DB1B fares for one state file.
+	# Load DB1B fares for one state.
 	file_path = DATA_DIR / "DB1BMarket Airline Ticket Data" / f"{state}_T_DB1B_MARKET.csv"
 	df = pd.read_csv(file_path)
 
@@ -51,14 +51,14 @@ def load_db1b_data(state):
 
 
 def load_delay_data():
-	# Delay-cause rows for Q1 and our airports.
+	# Load delay data for Q1 and the target airports.
 	file_path = DATA_DIR / "Flight Delays" / "ot_delaycause1_DL" / "Airline_Delay_Cause.csv"
 	df = pd.read_csv(file_path)
 
 	df = df[(df["year"] == 2025) & (df["month"].isin([1, 2, 3]))]
 	df = df[df["airport"].isin(TARGET_AIRPORTS)]
 
-	# BTS exports these as strings with missing values; cast them all at once.
+	# Some delay columns come in as text, so cast them here.
 	numeric_cols = [
 		"arr_flights",
 		"arr_del15",
@@ -83,7 +83,7 @@ def load_delay_data():
 
 
 def load_fuel_data():
-	# Gulf jet fuel prices in 2025 Q1.
+	# Load Gulf jet fuel prices for Q1.
 	file_path = DATA_DIR / "Fuel Prices" / "DJFUELUSGULF.csv"
 	df = pd.read_csv(file_path)
 
@@ -95,7 +95,7 @@ def load_fuel_data():
 
 
 def load_t100_data(state):
-	# T-100 segment stats for one state file.
+	# Load T-100 stats for one state.
 	file_path = DATA_DIR / "T-100 (Load Factor)" / f"{state}_T_T100D_SEGMENT_US_CARRIER_ONLY.csv"
 	df = pd.read_csv(file_path)
 
@@ -108,7 +108,7 @@ def load_t100_data(state):
 
 
 def preprocess_all_data(output_dir=Path("cleaned_data")):
-	# Run all loaders and save cleaned tables.
+	# Run each loader and save the cleaned tables.
 	print("Loading competition data...")
 	competition_df = load_competition_data()
 

@@ -1,5 +1,5 @@
 # Filename: features.py
-# Purpose: Join cleaned sources into one route-level table for modeling.
+# Purpose: Merge cleaned sources and build the route features used by the modeling step.
 
 
 from pathlib import Path
@@ -11,13 +11,13 @@ CLEANED_DIR = Path("cleaned_data")
 
 
 def _safe_divide(numerator, denominator):
-    # Safe divide — zeros become NaN, not inf.
+    # Safe divide so zeros turn into NaN, not inf.
     denominator = denominator.where(denominator != 0)
     return numerator / denominator
 
 
 def load_cleaned_inputs():
-    # Read cleaned files from the ingest step.
+    # Load the cleaned files from the ingest step.
     return {
         "competition": pd.read_csv(CLEANED_DIR / "competition_cleaned.csv"),
         "delay": pd.read_csv(CLEANED_DIR / "delay_cleaned.csv"),
@@ -28,14 +28,14 @@ def load_cleaned_inputs():
 
 
 def aggregate_competition_routes(comp_df):
-    # Route-level competition stats by quarter.
+    # Summarize competition by route and quarter.
     comp_df = comp_df.copy()
     comp_df["Date"] = pd.to_datetime(comp_df["Date"])
     comp_df["YEAR"] = comp_df["Date"].dt.year
     comp_df["QUARTER"] = comp_df["Date"].dt.quarter
     comp_df["Delay"] = pd.to_numeric(comp_df["Delay"], errors="coerce")
     comp_df["Cancelled"] = pd.to_numeric(comp_df["Cancelled"], errors="coerce").fillna(0)
-    # 15 min is the FAA/BTS standard for a reportable delay.
+    # Use 15 minutes as the delay cutoff.
     comp_df["is_delayed_15"] = (comp_df["Delay"] >= 15).astype(int)
 
     return (
@@ -52,9 +52,9 @@ def aggregate_competition_routes(comp_df):
 
 
 def aggregate_delay_airport_quarter(delay_df):
-    # Airport delay/cancel rates by quarter.
+    # Summarize airport delay and cancel rates by quarter.
     delay_df = delay_df.copy()
-# BTS delay data only has month, not quarter.
+    # This file has month but not quarter.
     delay_df["QUARTER"] = ((delay_df["month"] - 1) // 3) + 1
 
     agg_df = (
@@ -106,7 +106,7 @@ def aggregate_delay_airport_quarter(delay_df):
 
 
 def aggregate_db1b_routes(db1b_df):
-    # DB1B route fares and demand by quarter.
+    # Summarize DB1B fares and demand by route.
     return (
         db1b_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
         .agg(
@@ -118,7 +118,7 @@ def aggregate_db1b_routes(db1b_df):
 
 
 def aggregate_t100_routes(t100_df):
-    # T-100 route traffic and seat totals.
+    # Summarize T-100 traffic and seats by route.
     return (
         t100_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
         .agg(
@@ -130,7 +130,7 @@ def aggregate_t100_routes(t100_df):
 
 
 def aggregate_fuel_quarterly(fuel_df):
-    # Quarter average fuel price.
+    # Average fuel price by quarter.
     fuel_df = fuel_df.copy()
     fuel_df["observation_date"] = pd.to_datetime(fuel_df["observation_date"])
     fuel_df["YEAR"] = fuel_df["observation_date"].dt.year
@@ -143,7 +143,7 @@ def aggregate_fuel_quarterly(fuel_df):
 
 
 def build_analysis_table(save=True):
-    # Main feature table used for modeling.
+    # Build the main table used for modeling.
     datasets = load_cleaned_inputs()
 
     competition_routes = aggregate_competition_routes(datasets["competition"])
@@ -153,7 +153,7 @@ def build_analysis_table(save=True):
     fuel_quarterly = aggregate_fuel_quarterly(datasets["fuel"])
 
     # Join route fares with traffic, competition, and fuel.
-    # Inner on T-100 — only keep routes with both fare and traffic data.
+    # Keep only routes with both fare and traffic data.
     analysis_df = db1b_routes.merge(
         t100_routes,
         on=["YEAR", "QUARTER", "ORIGIN", "DEST"],
@@ -161,7 +161,7 @@ def build_analysis_table(save=True):
     ).merge(
         competition_routes,
         on=["YEAR", "QUARTER", "ORIGIN", "DEST"],
-        how="left",  # routes with no competition entry are still valid
+        how="left",  # routes without competition data are still valid
     ).merge(
         fuel_quarterly,
         on=["YEAR", "QUARTER"],
@@ -191,7 +191,7 @@ def build_analysis_table(save=True):
         }
     )
 
-    # Add origin/destination delay features to each route.
+    # Add delay features for both ends of the route.
     analysis_df = analysis_df.merge(
         origin_delay,
         on=["YEAR", "QUARTER", "ORIGIN"],
@@ -234,11 +234,11 @@ def build_analysis_table(save=True):
         "competition_delay15_rate",
     ]:
         if col in analysis_df.columns:
-            # NaN here means no competition on that route.
+            # Missing here means no competition on that route.
             analysis_df[col] = analysis_df[col].fillna(0)
 
     analysis_df["route"] = analysis_df["ORIGIN"] + "-" + analysis_df["DEST"]
-    # load_factor >= 0.8 = saturated route.
+    # Mark routes at 80%+ load as saturated.
     analysis_df["is_saturated"] = (analysis_df["load_factor"] >= 0.8).astype(int)
 
     analysis_df = analysis_df.sort_values(

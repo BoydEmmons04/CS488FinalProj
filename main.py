@@ -1,5 +1,5 @@
 # Filename: main.py
-# Purpose: Run the project pipeline end to end.
+# Purpose: Run the full workflow in order: ingest, features, modeling, then evaluation.
 
 from ingest import preprocess_all_data
 from features import build_analysis_table

@@ -1,5 +1,5 @@
 # Filename: evaluation.py
-# Purpose: Score model predictions and save evaluation outputs.
+# Purpose: Compare model predictions, compute performance metrics, and export evaluation visuals/tables.
 
 from pathlib import Path
 
@@ -15,7 +15,7 @@ OUTPUT_DIR = Path("outputs") / "evaluation"
 
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	# Save a dataframe as a readable text table.
+	# Save a dataframe as a table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 
@@ -39,7 +39,7 @@ def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
 
 
 def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_model=None):
-	# Write one combined text summary for the report.
+	# Write a short summary for the report.
 	lines = []
 	lines.append("AIRLINE FARE MODEL REPORT SUMMARY")
 	lines.append("=" * 80)
@@ -125,7 +125,7 @@ def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_mod
 	lines.append(best_model_line)
 	lines.append("")
 
-	(OUTPUT_DIR / "report_summary_table.txt").write_text("\n".join(lines), encoding="utf-8")
+	(OUTPUT_DIR / "report_summary.txt").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _compute_metrics(y_true, y_pred):
@@ -146,14 +146,14 @@ def _compute_metrics(y_true, y_pred):
 
 
 def _add_accuracy_columns(metrics_df):
-	# Convert MAPE to a 0-100% accuracy score; clip so it never goes negative.
+	# Add percent-style accuracy fields.
 	metrics_df["AccuracyPct"] = ((1.0 - metrics_df["MAPE"]) * 100.0).clip(lower=0.0, upper=100.0)
 	metrics_df["R2Pct"] = (metrics_df["R2"] * 100.0).clip(lower=0.0, upper=100.0)
 	return metrics_df
 
 
 def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=None):
-	# Save the main comparison and diagnostics plots.
+	# Save the main comparison and diagnostic plots.
 	base_colors = ["#4C78A8", "#54A24B", "#F58518", "#E45756", "#72B7B2"]
 	colors = [base_colors[i % len(base_colors)] for i in range(len(metrics_df))]
 
@@ -171,7 +171,7 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 		axes[idx].tick_params(axis="x", rotation=18)
 	fig.suptitle("Model Comparison Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(OUTPUT_DIR / "model_comparison_panel.png", dpi=150)
+	fig.savefig(OUTPUT_DIR / "metrics_comparison.png", dpi=150)
 	plt.close(fig)
 
 	model_names = list(predictions.keys())
@@ -183,14 +183,14 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 		axes[idx].scatter(y_test, y_pred, alpha=0.5, edgecolors="black", linewidths=0.2)
 		min_val = min(float(y_test.min()), float(y_pred.min()))
 		max_val = max(float(y_test.max()), float(y_pred.max()))
-		# Dashed diagonal = perfect predictions; points clustered around it = good fit.
+		# Dashed line shows a perfect prediction.
 		axes[idx].plot([min_val, max_val], [min_val, max_val], "k--", linewidth=1)
 		axes[idx].set_xlabel("Actual Avg Fare ($)")
 		axes[idx].set_ylabel("Predicted Avg Fare ($)")
 		axes[idx].set_title(model_name)
 	fig.suptitle("Actual vs Predicted Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(OUTPUT_DIR / "actual_vs_predicted_panel.png", dpi=150)
+	fig.savefig(OUTPUT_DIR / "actual_vs_predicted.png", dpi=150)
 	plt.close(fig)
 
 	if model_df is None or model_df.empty:
@@ -243,14 +243,14 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 		.agg(avg_fare=("avg_fare", "mean"), avg_load_factor=("load_factor", "mean"), avg_fuel_price=("avg_fuel_price", "mean"))
 		.sort_values(["YEAR", "QUARTER"])
 	)
-	# Label each point as YYYY-QN for the x-axis tick.
+	# Use YYYY-QN labels on the x-axis.
 	time_df["period"] = (
 		time_df["YEAR"].astype(int).astype(str)
 		+ "-Q"
 		+ time_df["QUARTER"].astype(int).astype(str)
 	)
 	_write_table_txt(
-		OUTPUT_DIR / "time_series_summary.txt",
+		OUTPUT_DIR / "time_series.txt",
 		time_df.round(4),
 		title="TIME SERIES SUMMARY",
 		index=False,
@@ -280,7 +280,7 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 
 	fig.suptitle("Data Diagnostics Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(OUTPUT_DIR / "data_diagnostics_panel.png", dpi=150)
+	fig.savefig(OUTPUT_DIR / "diagnostics.png", dpi=150)
 	plt.close(fig)
 
 
@@ -302,7 +302,7 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 			coef_df.insert(0, "rank", range(1, len(coef_df) + 1))
 			coef_df = coef_df.round(4)
 			_write_table_txt(
-				OUTPUT_DIR / "feature_importance_linear.txt",
+				OUTPUT_DIR / "linear_importance.txt",
 				coef_df,
 				title="LINEAR FEATURE IMPORTANCE",
 				index=False,
@@ -320,7 +320,7 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 		explained_df.insert(0, "component_rank", range(1, len(explained_df) + 1))
 		explained_df = explained_df.round(4)
 		_write_table_txt(
-			OUTPUT_DIR / "pca_explained_variance.txt",
+			OUTPUT_DIR / "pca_variance.txt",
 			explained_df,
 			title="PCA EXPLAINED VARIANCE",
 			index=False,
@@ -398,7 +398,7 @@ def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_
 
 	if rows:
 		_write_table_txt(
-			OUTPUT_DIR / "conclusions_summary.txt",
+			OUTPUT_DIR / "conclusions.txt",
 			pd.DataFrame(rows),
 			title="CONCLUSIONS SUMMARY",
 			index=False,
@@ -440,7 +440,7 @@ def evaluate_model_outputs(model_results, save=True):
 		OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 		_write_table_txt(
-			OUTPUT_DIR / "model_metrics.txt",
+			OUTPUT_DIR / "metrics.txt",
 			metrics_df,
 			title="MODEL METRICS",
 			index=False,

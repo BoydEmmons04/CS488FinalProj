@@ -1,5 +1,5 @@
 # Filename: modeling.py
-# Purpose: Train fare models and save modeling outputs.
+# Purpose: Prepare model inputs, train linear/PCA regression models, and save modeling artifacts.
 
 from pathlib import Path
 
@@ -18,7 +18,7 @@ OUTPUT_DIR = Path("outputs") / "modeling"
 
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	# Save a dataframe as an organized table.
+	# Save a dataframe as a clean text table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 
@@ -46,7 +46,7 @@ def load_analysis_table(path=CLEANED_DIR / "analysis_table.csv"):
 
 
 def _build_model_frame(analysis_df):
-	# Prepare clean model inputs and engineered route features.
+	# Clean the data and build the model features.
 	df = analysis_df.copy()
 
 	if "route" not in df.columns:
@@ -54,15 +54,14 @@ def _build_model_frame(analysis_df):
 
 	df = df.sort_values(["route", "YEAR", "QUARTER"]).reset_index(drop=True)
 
-	# Route context features.
-	# Sort by route+time first so lag and rolling calculations are in the right order.
+	# Sort first so lag and rolling values line up correctly.
 	df["route_avg_load_factor"] = df.groupby("route")["load_factor"].transform("mean")
 	df["lag_load_factor"] = df.groupby("route")["load_factor"].shift(1)
 	df["rolling_load_factor_2"] = (
 		df.groupby("route")["load_factor"].transform(lambda s: s.rolling(2, min_periods=1).mean())
 	)
 
-	# First period has no prior quarter, so fall back to the current value.
+	# Use the current value when there is no prior quarter.
 	if "lag_load_factor" in df.columns:
 		df["lag_load_factor"] = df["lag_load_factor"].fillna(df["load_factor"])
 	if "rolling_load_factor_2" in df.columns:
@@ -94,12 +93,12 @@ def _build_model_frame(analysis_df):
 		median = df[col].median()
 		if pd.isna(median):
 			median = 0.0
-		# Median imputation is more robust than mean for skewed fare/delay data.
+		# Fill missing numeric values with the median.
 		df[col] = df[col].fillna(median)
 	if "is_saturated" in df.columns:
 		df["is_saturated"] = df["is_saturated"].fillna(0).astype(int)
 
-	# Fixed feature list so training stays consistent.
+	# Keep the feature list fixed so runs stay consistent.
 	feature_candidates = [
 		"load_factor",
 		"route_avg_load_factor",
@@ -134,7 +133,7 @@ def _build_model_frame(analysis_df):
 
 
 def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
-	# Train linear and PCA regression models.
+	# Train the linear and PCA-based models.
 	if analysis_df is None:
 		analysis_df = load_analysis_table()
 
@@ -143,7 +142,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	X = model_df[feature_cols]
 	y = model_df[target_col]
 
-	# 80/20 split; random_state fixed so results are reproducible.
+	# Use a fixed split so results are repeatable.
 	X_train, X_test, y_train, y_test = train_test_split(
 		X, y, test_size=test_size, random_state=random_state
 	)
@@ -151,13 +150,13 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	linear_model = LinearRegression()
 	linear_model.fit(X_train, y_train)
 
-	# Model 2: PCA features, then linear regression.
-	# Must scale before PCA — PCA is sensitive to feature magnitude.
+	# Second model: PCA plus linear regression.
+	# Scale first so large-value features do not dominate PCA.
 	scaler = StandardScaler()
 	X_train_scaled = scaler.fit_transform(X_train)
 	X_test_scaled = scaler.transform(X_test)
 
-	# n_components=0.95 keeps however many components explain 95% of variance.
+	# Keep enough components to explain 95% of the variance.
 	pca = PCA(n_components=0.95, random_state=random_state)
 	X_train_pca = pca.fit_transform(X_train_scaled)
 	X_test_pca = pca.transform(X_test_scaled)
@@ -174,7 +173,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		"PCA Regression": pca_regression,
 	}
 
-	# Correlation slices used in the report.
+	# Save a smaller correlation view for the report.
 	correlation = model_df[feature_cols + [target_col]].corr(numeric_only=True)
 	focus_cols = [
 		"load_factor",
@@ -199,7 +198,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		correlation_focus_txt = correlation_focus.round(4).copy()
 		correlation_focus_txt.index.name = "Feature"
 		_write_table_txt(
-			OUTPUT_DIR / "correlation_focus.txt",
+			OUTPUT_DIR / "correlation.txt",
 			correlation_focus_txt,
 			title="CORRELATION FOCUS MATRIX",
 			index=True,
@@ -248,7 +247,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 			axes[3].set_visible(False)
 
 		plt.tight_layout()
-		fig.savefig(OUTPUT_DIR / "modeling_overview_panel.png", dpi=150)
+		fig.savefig(OUTPUT_DIR / "modeling_overview.png", dpi=150)
 		plt.close(fig)
 
 		pred_export_cols = [
@@ -310,7 +309,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		if pred_summary_rows:
 			pred_summary_df = pd.DataFrame(pred_summary_rows).round(4)
 			_write_table_txt(
-				OUTPUT_DIR / "test_predictions_summary.txt",
+				OUTPUT_DIR / "predictions_summary.txt",
 				pred_summary_df,
 				title="TEST PREDICTIONS SUMMARY",
 				index=False,

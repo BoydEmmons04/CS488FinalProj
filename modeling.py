@@ -1,6 +1,5 @@
-"""
-Trains regression and dimensionality reduction models, generates predictions, and produces correlation analyses and visualizations.
-"""
+# Filename: modeling.py
+# Purpose: Train fare models and save modeling outputs.
 
 from pathlib import Path
 
@@ -19,7 +18,7 @@ OUTPUT_DIR = Path("outputs") / "modeling"
 
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	"""Write a dataframe to a readable plain-text table file."""
+	# Save a dataframe as a readable text table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 
@@ -42,12 +41,12 @@ def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
 	path.write_text("\n".join(lines), encoding="utf-8")
 
 def load_analysis_table(path=CLEANED_DIR / "analysis_table.csv"):
-	"""Load the merged analysis table used for modeling."""
+	# Read the analysis table from disk.
 	return pd.read_csv(path)
 
 
 def _build_model_frame(analysis_df):
-	"""Create a stable model frame with derived features and no nulls in predictors."""
+	# Prepare clean model inputs and engineered route features.
 	df = analysis_df.copy()
 
 	if "route" not in df.columns:
@@ -55,7 +54,7 @@ def _build_model_frame(analysis_df):
 
 	df = df.sort_values(["route", "YEAR", "QUARTER"]).reset_index(drop=True)
 
-	# Route context features that align with the project hypothesis.
+	# Route context features.
 	df["route_avg_load_factor"] = df.groupby("route")["load_factor"].transform("mean")
 	df["lag_load_factor"] = df.groupby("route")["load_factor"].shift(1)
 	df["rolling_load_factor_2"] = (
@@ -97,6 +96,7 @@ def _build_model_frame(analysis_df):
 	if "is_saturated" in df.columns:
 		df["is_saturated"] = df["is_saturated"].fillna(0).astype(int)
 
+	# Fixed feature list so training stays consistent.
 	feature_candidates = [
 		"load_factor",
 		"route_avg_load_factor",
@@ -131,7 +131,7 @@ def _build_model_frame(analysis_df):
 
 
 def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
-	"""Train project models and return prediction artifacts for evaluation."""
+	# Train linear and PCA regression models.
 	if analysis_df is None:
 		analysis_df = load_analysis_table()
 
@@ -147,7 +147,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	linear_model = LinearRegression()
 	linear_model.fit(X_train, y_train)
 
-	# Core model 2: PCA + Regression — reduce to 95% variance components then regress.
+	# Model 2: PCA features, then linear regression.
 	scaler = StandardScaler()
 	X_train_scaled = scaler.fit_transform(X_train)
 	X_test_scaled = scaler.transform(X_test)
@@ -168,6 +168,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		"PCA Regression": pca_regression,
 	}
 
+	# Correlation slices used in the report.
 	correlation = model_df[feature_cols + [target_col]].corr(numeric_only=True)
 	focus_cols = [
 		"load_factor",
@@ -327,7 +328,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 
 
 def predict_fares(input_df=None, model_name="Linear Regression"):
-	"""Generate predictions on input data using trained models."""
+	# Quick prediction helper.
 	analysis_df = load_analysis_table() if input_df is None else input_df
 	results = run_modeling_pipeline(analysis_df=analysis_df, save=False)
 	if model_name == "linear_regression":

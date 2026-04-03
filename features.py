@@ -1,6 +1,5 @@
-"""
-Builds the merged route‑by‑quarter feature table from cleaned airline and fuel data, including load‑factor and saturation variables.
-"""
+# Filename: features.py
+# Purpose: Join cleaned sources into one route-level table for modeling.
 
 
 from pathlib import Path
@@ -12,13 +11,13 @@ CLEANED_DIR = Path("cleaned_data")
 
 
 def _safe_divide(numerator, denominator):
-    """Divide stuff without crashing on zero denominator"""
+    # Safe divide helper for rate columns.
     denominator = denominator.where(denominator != 0)
     return numerator / denominator
 
 
 def load_cleaned_inputs():
-    """Load the cleaned files from /cleaned_data"""
+    # Read cleaned files from the ingest step.
     return {
         "competition": pd.read_csv(CLEANED_DIR / "competition_cleaned.csv"),
         "delay": pd.read_csv(CLEANED_DIR / "delay_cleaned.csv"),
@@ -29,7 +28,7 @@ def load_cleaned_inputs():
 
 
 def aggregate_competition_routes(comp_df):
-    """Compress competition flights into route-level quarterly pressure signals."""
+    # Route-level competition stats by quarter.
     comp_df = comp_df.copy()
     comp_df["Date"] = pd.to_datetime(comp_df["Date"])
     comp_df["YEAR"] = comp_df["Date"].dt.year
@@ -52,7 +51,7 @@ def aggregate_competition_routes(comp_df):
 
 
 def aggregate_delay_airport_quarter(delay_df):
-    """Create airport-quarter delay severity features from BTS delay-cause data."""
+    # Airport delay/cancel rates by quarter.
     delay_df = delay_df.copy()
     delay_df["QUARTER"] = ((delay_df["month"] - 1) // 3) + 1
 
@@ -105,7 +104,7 @@ def aggregate_delay_airport_quarter(delay_df):
 
 
 def aggregate_db1b_routes(db1b_df):
-    """Compress DB1B down to one row per route and quarter."""
+    # DB1B route fares and demand by quarter.
     return (
         db1b_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
         .agg(
@@ -117,7 +116,7 @@ def aggregate_db1b_routes(db1b_df):
 
 
 def aggregate_t100_routes(t100_df):
-    """Compress T-100 data into route-level flight stats."""
+    # T-100 route traffic and seat totals.
     return (
         t100_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
         .agg(
@@ -129,7 +128,7 @@ def aggregate_t100_routes(t100_df):
 
 
 def aggregate_fuel_quarterly(fuel_df):
-    """Turn daily fuel prices into one quarter average."""
+    # Quarter average fuel price.
     fuel_df = fuel_df.copy()
     fuel_df["observation_date"] = pd.to_datetime(fuel_df["observation_date"])
     fuel_df["YEAR"] = fuel_df["observation_date"].dt.year
@@ -142,7 +141,7 @@ def aggregate_fuel_quarterly(fuel_df):
 
 
 def build_analysis_table(save=True):
-    """Create the modeling table."""
+    # Main feature table used for modeling.
     datasets = load_cleaned_inputs()
 
     competition_routes = aggregate_competition_routes(datasets["competition"])
@@ -151,6 +150,7 @@ def build_analysis_table(save=True):
     t100_routes = aggregate_t100_routes(datasets["t100"])
     fuel_quarterly = aggregate_fuel_quarterly(datasets["fuel"])
 
+    # Join route fares with traffic, competition, and fuel.
     analysis_df = db1b_routes.merge(
         t100_routes,
         on=["YEAR", "QUARTER", "ORIGIN", "DEST"],
@@ -188,6 +188,7 @@ def build_analysis_table(save=True):
         }
     )
 
+    # Add origin/destination delay features to each route.
     analysis_df = analysis_df.merge(
         origin_delay,
         on=["YEAR", "QUARTER", "ORIGIN"],

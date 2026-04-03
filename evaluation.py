@@ -1,4 +1,5 @@
-"""Compute evaluation metrics and generate concise, grouped output artifacts."""
+# Filename: evaluation.py
+# Purpose: Score model predictions and save evaluation outputs.
 
 from pathlib import Path
 
@@ -14,7 +15,7 @@ OUTPUT_DIR = Path("outputs") / "evaluation"
 
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	"""Write a dataframe to a readable plain-text table file."""
+	# Save a dataframe as a readable text table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 
@@ -38,7 +39,7 @@ def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
 
 
 def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_model=None):
-	"""Save a single plain-text report with table-style summaries."""
+	# Write one combined text summary for the report.
 	lines = []
 	lines.append("AIRLINE FARE MODEL REPORT SUMMARY")
 	lines.append("=" * 80)
@@ -128,7 +129,7 @@ def _save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_mod
 
 
 def _compute_metrics(y_true, y_pred):
-	"""Compute RMSE, MAPE, R2, and SNR metrics."""
+	# Core regression metrics.
 	rmse = mean_squared_error(y_true, y_pred) ** 0.5
 	mape = mean_absolute_percentage_error(y_true, y_pred)
 	r2 = r2_score(y_true, y_pred)
@@ -151,7 +152,7 @@ def _add_accuracy_columns(metrics_df):
 
 
 def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=None):
-	"""Save grouped panels to reduce clutter while preserving key visual information."""
+	# Save the main comparison and diagnostics plots.
 	base_colors = ["#4C78A8", "#54A24B", "#F58518", "#E45756", "#72B7B2"]
 	colors = [base_colors[i % len(base_colors)] for i in range(len(metrics_df))]
 
@@ -281,7 +282,7 @@ def _save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=N
 
 
 def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
-	"""Save concise interpretable artifacts for linear and PCA-based models."""
+	# Save linear coefficients and PCA variance tables.
 	feature_cols = list(X_test.columns)
 
 	if "Linear Regression" in trained_models:
@@ -323,7 +324,7 @@ def _save_feature_importance_artifacts(trained_models, X_test, pca_model=None):
 
 
 def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=None):
-	"""Export a compact conclusions table for report-ready interpretation."""
+	# Save a short findings table.
 	rows = []
 
 	if metrics_df is not None and not metrics_df.empty:
@@ -401,7 +402,7 @@ def _save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_
 
 
 def evaluate_model_outputs(model_results, save=True):
-	"""Evaluate modeled predictions and save all project artifacts."""
+	# Run evaluation and save outputs.
 	y_test = model_results["y_test"]
 	predictions = model_results["predictions"]
 	trained_models = model_results["trained_models"]

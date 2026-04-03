@@ -1,6 +1,5 @@
-"""
-Loads the raw airline CSVs, filters them to the project scope, and outputs cleaned datasets for later steps.
-"""
+# Filename: ingest.py
+# Purpose: Read raw airline CSVs, keep the project slice, and write cleaned files.
 
 import pandas as pd
 from pathlib import Path
@@ -14,7 +13,7 @@ TARGET_AIRPORTS = set(CA_AIRPORTS + GA_AIRPORTS + TX_AIRPORTS)
 
 
 def load_competition_data():
-	"""Load and clean US Flights Data (2025 Q1)."""
+	# Competition flights for 2025 Q1 and our airport list.
 	file_path = DATA_DIR / "Competition (Airline Count)" / "US Flights Data (2025, Q1) - Flight Dataset.csv"
 
 	chunks = []
@@ -38,7 +37,7 @@ def load_competition_data():
 
 
 def load_db1b_data(state):
-	"""Load DB1B Market data for a given state."""
+	# DB1B fares for one state file.
 	file_path = DATA_DIR / "DB1BMarket Airline Ticket Data" / f"{state}_T_DB1B_MARKET.csv"
 	df = pd.read_csv(file_path)
 
@@ -51,7 +50,7 @@ def load_db1b_data(state):
 
 
 def load_delay_data():
-	"""Load and clean Airline Delay Cause data."""
+	# Delay-cause rows for Q1 and our airports.
 	file_path = DATA_DIR / "Flight Delays" / "ot_delaycause1_DL" / "Airline_Delay_Cause.csv"
 	df = pd.read_csv(file_path)
 
@@ -82,7 +81,7 @@ def load_delay_data():
 
 
 def load_fuel_data():
-	"""Load and clean fuel prices data."""
+	# Gulf jet fuel prices in 2025 Q1.
 	file_path = DATA_DIR / "Fuel Prices" / "DJFUELUSGULF.csv"
 	df = pd.read_csv(file_path)
 
@@ -94,7 +93,7 @@ def load_fuel_data():
 
 
 def load_t100_data(state):
-	"""Load T-100 Load Factor data for a given state."""
+	# T-100 segment stats for one state file.
 	file_path = DATA_DIR / "T-100 (Load Factor)" / f"{state}_T_T100D_SEGMENT_US_CARRIER_ONLY.csv"
 	df = pd.read_csv(file_path)
 
@@ -107,7 +106,7 @@ def load_t100_data(state):
 
 
 def preprocess_all_data(output_dir=Path("cleaned_data")):
-	"""Load, filter, and persist all cleaned datasets."""
+	# Run all loaders and save cleaned tables.
 	print("Loading competition data...")
 	competition_df = load_competition_data()
 

@@ -428,7 +428,7 @@ def evaluate_model_outputs(model_results, save=True):
 	metrics_df = pd.DataFrame(metric_rows).sort_values("RMSE").reset_index(drop=True)
 	metrics_df = _add_accuracy_columns(metrics_df)
 	metrics_df = metrics_df[["model", "RMSE", "MAPE", "R2", "SNR", "AccuracyPct", "R2Pct"]].round(4)
-	metrics_df = metrics_df.rename(
+	export_metrics_df = metrics_df.rename(
 		columns={
 			"model": "Model",
 			"RMSE": "RMSE_USD",
@@ -445,14 +445,14 @@ def evaluate_model_outputs(model_results, save=True):
 
 		_write_table_txt(
 			OUTPUT_DIR / "metrics.txt",
-			metrics_df,
+			export_metrics_df,
 			title="MODEL METRICS",
 			index=False,
 		)
-		_save_grouped_visuals(metrics_df, predictions, y_test, model_df, pca_model=pca_model)
+		_save_grouped_visuals(export_metrics_df, predictions, y_test, model_df, pca_model=pca_model)
 		_save_feature_importance_artifacts(trained_models, X_test, pca_model=pca_model)
-		_save_conclusions_summary(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
-		_save_report_table_txt(metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
+		_save_conclusions_summary(export_metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
+		_save_report_table_txt(export_metrics_df, model_df, trained_models, X_test, pca_model=pca_model)
 
 		print("Cleaned evaluation artifacts saved to:", OUTPUT_DIR)
 

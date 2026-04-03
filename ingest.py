@@ -1,8 +1,11 @@
 # Filename: ingest.py
 # Purpose: Load raw airline datasets, keep the project time/airport scope, and write cleaned CSVs.
 
-import pandas as pd
 from pathlib import Path
+import os
+import tempfile
+
+import pandas as pd
 
 DATA_DIR = Path("Project Datasets")
 
@@ -10,6 +13,22 @@ CA_AIRPORTS = ["LAX", "SFO", "SAN", "OAK", "ONT", "BUR", "SJC", "SMF", "PSP", "F
 GA_AIRPORTS = ["ATL", "SAV", "AGS", "ABY"]
 TX_AIRPORTS = ["DFW", "IAH", "DAL", "HOU", "AUS", "SAT", "ELP", "MAF", "ABI", "AMA", "GRK"]
 TARGET_AIRPORTS = set(CA_AIRPORTS + GA_AIRPORTS + TX_AIRPORTS)
+
+
+def _write_csv_safely(df, path):
+	# Write to a temp file first, then replace the target file atomically.
+	path = Path(path)
+	path.parent.mkdir(parents=True, exist_ok=True)
+	temp_path = None
+	try:
+		with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.stem + "_", suffix=path.suffix, delete=False) as handle:
+			temp_path = Path(handle.name)
+		df.to_csv(temp_path, index=False)
+		os.replace(temp_path, path)
+	except Exception:
+		if temp_path is not None and temp_path.exists():
+			temp_path.unlink()
+		raise
 
 
 def load_competition_data():
@@ -40,9 +59,25 @@ def load_competition_data():
 def load_db1b_data(state):
 	# Load DB1B fares for one state.
 	file_path = DATA_DIR / "DB1BMarket Airline Ticket Data" / f"{state}_T_DB1B_MARKET.csv"
-	df = pd.read_csv(file_path)
 
-	df = df[(df["YEAR"] == 2025) & (df["QUARTER"] == 1)]
+	chunks = []
+	for chunk in pd.read_csv(
+		file_path,
+		usecols=["YEAR", "QUARTER", "ORIGIN", "DEST", "PASSENGERS", "MARKET_FARE", "MARKET_DISTANCE"],
+		chunksize=100000,
+	):
+		chunk = chunk[(chunk["YEAR"] == 2025) & (chunk["QUARTER"] == 1)]
+		chunk = chunk[chunk["ORIGIN"].isin(TARGET_AIRPORTS) | chunk["DEST"].isin(TARGET_AIRPORTS)]
+		if not chunk.empty:
+			chunks.append(chunk)
+
+	if chunks:
+		df = pd.concat(chunks, ignore_index=True)
+	else:
+		df = pd.DataFrame(
+			columns=["YEAR", "QUARTER", "ORIGIN", "DEST", "PASSENGERS", "MARKET_FARE", "MARKET_DISTANCE"]
+		)
+
 	df["PASSENGERS"] = pd.to_numeric(df["PASSENGERS"], errors="coerce")
 	df["MARKET_FARE"] = pd.to_numeric(df["MARKET_FARE"], errors="coerce")
 	df["MARKET_DISTANCE"] = pd.to_numeric(df["MARKET_DISTANCE"], errors="coerce")
@@ -130,12 +165,12 @@ def preprocess_all_data(output_dir=Path("cleaned_data")):
 		ignore_index=True,
 	)
 
-	output_dir.mkdir(exist_ok=True)
-	competition_df.to_csv(output_dir / "competition_cleaned.csv", index=False)
-	delay_df.to_csv(output_dir / "delay_cleaned.csv", index=False)
-	db1b_df.to_csv(output_dir / "db1b_cleaned.csv", index=False)
-	fuel_df.to_csv(output_dir / "fuel_cleaned.csv", index=False)
-	t100_df.to_csv(output_dir / "t100_cleaned.csv", index=False)
+	output_dir.mkdir(parents=True, exist_ok=True)
+	_write_csv_safely(competition_df, output_dir / "competition_cleaned.csv")
+	_write_csv_safely(delay_df, output_dir / "delay_cleaned.csv")
+	_write_csv_safely(db1b_df, output_dir / "db1b_cleaned.csv")
+	_write_csv_safely(fuel_df, output_dir / "fuel_cleaned.csv")
+	_write_csv_safely(t100_df, output_dir / "t100_cleaned.csv")
 
 	print("Preprocessing complete. Cleaned datasets saved to 'cleaned_data' folder.")
 

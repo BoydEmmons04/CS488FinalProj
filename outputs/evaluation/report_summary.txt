@@ -1,0 +1,54 @@
+AIRLINE FARE MODEL REPORT SUMMARY
+================================================================================
+
+[1] MODEL METRICS
+--------------------------------------------------------------------------------
+            Model  RMSE_USD   MAPE     R2     SNR  Accuracy_Pct  R2_Pct
+Linear Regression   65.0381 0.2159 0.3880 17.1617       78.4098 38.8046
+   PCA Regression   68.1360 0.2335 0.3284 15.6366       76.6482 32.8360
+
+[2] TOP CORRELATIONS WITH AVERAGE FARE
+--------------------------------------------------------------------------------
+                         Feature  Corr_with_AvgFare
+                 market_distance             0.5532
+                    is_saturated             0.2191
+ route_late_aircraft_delay_share            -0.1542
+        route_avg_arr_delay_rate             0.1286
+       route_weather_delay_share             0.1251
+  dest_late_aircraft_delay_share            -0.1222
+origin_late_aircraft_delay_share            -0.1208
+     competition_unique_carriers            -0.1138
+             competition_flights            -0.1009
+           route_nas_delay_share             0.0986
+
+[3] TOP LINEAR REGRESSION DRIVERS
+--------------------------------------------------------------------------------
+ Rank                         Feature  Coefficient  Abs_Coefficient
+    1       route_weather_delay_share    4437.7209        4437.7209
+    2        route_avg_arr_delay_rate   -2645.4121        2645.4121
+    3           route_nas_delay_share    1381.6508        1381.6508
+    4           route_avg_cancel_rate   -1054.7394        1054.7394
+    5 route_late_aircraft_delay_share     757.1828         757.1828
+    6       route_carrier_delay_share     452.4134         452.4134
+    7         competition_cancel_rate      58.8221          58.8221
+    8                    is_saturated      11.7740          11.7740
+    9     competition_unique_carriers      -8.0356           8.0356
+   10           route_avg_load_factor      -7.1459           7.1459
+
+[4] PCA EXPLAINED VARIANCE
+--------------------------------------------------------------------------------
+ Rank Component  Explained_Variance  Cumulative_Variance
+    1       PC1              0.2957               0.2957
+    2       PC2              0.1742               0.4698
+    3       PC3              0.1354               0.6052
+    4       PC4              0.1169               0.7221
+    5       PC5              0.0704               0.7924
+    6       PC6              0.0548               0.8472
+    7       PC7              0.0385               0.8857
+    8       PC8              0.0340               0.9197
+    9       PC9              0.0300               0.9497
+   10      PC10              0.0173               0.9670
+
+[5] KEY TAKEAWAY
+--------------------------------------------------------------------------------
+Best model by RMSE: Linear Regression | RMSE=65.0381 | R2=0.3880 | MAPE=0.2159 | Accuracy=78.41%

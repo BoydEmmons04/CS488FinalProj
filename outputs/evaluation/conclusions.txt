@@ -1,0 +1,21 @@
+CONCLUSIONS SUMMARY
+===================
+Rows: 14 | Columns: 4
+
+[Columns 1-4 of 4]
+--------------------------------------------------------------------------------
+         section                            item                 value                                                detail
+      Best Model           Top performer by RMSE     Linear Regression RMSE=65.038, R2=0.388, MAPE=0.216, AccuracyPct=78.41%
+Top Correlations                 market_distance                 0.553                     Pearson correlation with avg_fare
+Top Correlations                    is_saturated                 0.219                     Pearson correlation with avg_fare
+Top Correlations route_late_aircraft_delay_share                -0.154                     Pearson correlation with avg_fare
+Top Correlations        route_avg_arr_delay_rate                 0.129                     Pearson correlation with avg_fare
+Top Correlations       route_weather_delay_share                 0.125                     Pearson correlation with avg_fare
+  Linear Drivers       route_weather_delay_share              4437.721                    Linear coefficient (signed impact)
+  Linear Drivers        route_avg_arr_delay_rate             -2645.412                    Linear coefficient (signed impact)
+  Linear Drivers           route_nas_delay_share              1381.651                    Linear coefficient (signed impact)
+  Linear Drivers           route_avg_cancel_rate             -1054.739                    Linear coefficient (signed impact)
+  Linear Drivers route_late_aircraft_delay_share               757.183                    Linear coefficient (signed impact)
+  PCA Components                 PC1 top feature           load_factor                Explains 29.6% variance; loading=0.394
+  PCA Components                 PC2 top feature route_nas_delay_share                Explains 17.4% variance; loading=0.543
+  PCA Components                 PC3 top feature   competition_flights                Explains 13.5% variance; loading=0.339

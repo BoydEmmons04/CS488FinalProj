@@ -1,0 +1,17 @@
+PCA EXPLAINED VARIANCE
+======================
+Rows: 10 | Columns: 4
+
+[Columns 1-4 of 4]
+--------------------------------------------------------------------------------
+ component_rank component  explained_variance_ratio  cumulative_explained_variance
+              1       PC1                    0.2957                         0.2957
+              2       PC2                    0.1742                         0.4698
+              3       PC3                    0.1354                         0.6052
+              4       PC4                    0.1169                         0.7221
+              5       PC5                    0.0704                         0.7924
+              6       PC6                    0.0548                         0.8472
+              7       PC7                    0.0385                         0.8857
+              8       PC8                    0.0340                         0.9197
+              9       PC9                    0.0300                         0.9497
+             10      PC10                    0.0173                         0.9670

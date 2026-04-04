@@ -8,7 +8,7 @@ import pandas as pd
 # Paths and scope
 
 DATA_DIR    = Path("Project Datasets")
-CLEANED_DIR = Path("cleaned_data")
+CLEANED_DIR = Path("Cleaned_Data")
 
 CA_AIRPORTS = ["LAX", "SFO", "SAN", "OAK", "ONT", "BUR", "SJC", "SMF", "PSP", "FAT", "BFL"]
 GA_AIRPORTS = ["ATL", "SAV", "AGS", "ABY"]
@@ -112,11 +112,11 @@ def preprocess_all_data(output_dir=CLEANED_DIR):
 	)
 
 	output_dir.mkdir(parents=True, exist_ok=True)
-	competition_df.to_csv(output_dir / "competition_cleaned.csv", index=False)
-	delay_df.to_csv(output_dir / "delay_cleaned.csv",             index=False)
-	db1b_df.to_csv(output_dir / "db1b_cleaned.csv",               index=False)
-	fuel_df.to_csv(output_dir / "fuel_cleaned.csv",               index=False)
-	t100_df.to_csv(output_dir / "t100_cleaned.csv",               index=False)
+	competition_df.to_csv(output_dir / "Competition_Cleaned.csv", index=False)
+	delay_df.to_csv(output_dir / "Delay_Cleaned.csv",             index=False)
+	db1b_df.to_csv(output_dir / "DB1B_Cleaned.csv",               index=False)
+	fuel_df.to_csv(output_dir / "Fuel_Cleaned.csv",               index=False)
+	t100_df.to_csv(output_dir / "T100_Cleaned.csv",               index=False)
 
 	print("Preprocessing complete. Cleaned datasets saved to", output_dir)
 
@@ -218,11 +218,11 @@ def _agg_fuel(fuel_df):
 
 def build_analysis_table(save=True):
 	# Merge cleaned sources into the route-quarter analysis table.
-	competition = pd.read_csv(CLEANED_DIR / "competition_cleaned.csv")
-	delay       = pd.read_csv(CLEANED_DIR / "delay_cleaned.csv")
-	db1b        = pd.read_csv(CLEANED_DIR / "db1b_cleaned.csv")
-	t100        = pd.read_csv(CLEANED_DIR / "t100_cleaned.csv")
-	fuel        = pd.read_csv(CLEANED_DIR / "fuel_cleaned.csv")
+	competition = pd.read_csv(CLEANED_DIR / "Competition_Cleaned.csv")
+	delay       = pd.read_csv(CLEANED_DIR / "Delay_Cleaned.csv")
+	db1b        = pd.read_csv(CLEANED_DIR / "DB1B_Cleaned.csv")
+	t100        = pd.read_csv(CLEANED_DIR / "T100_Cleaned.csv")
+	fuel        = pd.read_csv(CLEANED_DIR / "Fuel_Cleaned.csv")
 
 	db1b_routes  = _agg_db1b(db1b)
 	t100_routes  = _agg_t100(t100)
@@ -287,7 +287,7 @@ def build_analysis_table(save=True):
 
 	if save:
 		CLEANED_DIR.mkdir(exist_ok=True)
-		df.to_csv(CLEANED_DIR / "analysis_table.csv", index=False)
+		df.to_csv(CLEANED_DIR / "Analysis_Table.csv", index=False)
 
 	return df
 

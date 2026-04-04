@@ -3,17 +3,17 @@
 
 from pathlib import Path
 
-from data  import preprocess_all_data, build_analysis_table
-from model import run_modeling_pipeline, evaluate_model_outputs
+from Data  import preprocess_all_data, build_analysis_table
+from Model import run_modeling_pipeline, evaluate_model_outputs
 
 
-OUTPUT_DIR = Path("outputs")
+OUTPUT_DIR = Path("Outputs")
 
 
 def create_output_dirs():
     # Create output folders.
-    (OUTPUT_DIR / "modeling").mkdir(parents=True, exist_ok=True)
-    (OUTPUT_DIR / "evaluation").mkdir(parents=True, exist_ok=True)
+    (OUTPUT_DIR / "Modeling").mkdir(parents=True, exist_ok=True)
+    (OUTPUT_DIR / "Evaluation").mkdir(parents=True, exist_ok=True)
 
 
 def run_pipeline():

@@ -14,8 +14,8 @@ from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-CLEANED_DIR = Path("cleaned_data")
-OUTPUT_DIR  = Path("outputs")
+CLEANED_DIR = Path("Cleaned_Data")
+OUTPUT_DIR  = Path("Outputs")
 
 
 # Shared helper
@@ -97,7 +97,7 @@ def _build_model_frame(analysis_df):
 def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
 	# Train all three expert techniques and return results for evaluation.
 	if analysis_df is None:
-		analysis_df = pd.read_csv(CLEANED_DIR / "analysis_table.csv")
+		analysis_df = pd.read_csv(CLEANED_DIR / "Analysis_Table.csv")
 
 	model_df, feature_cols, target_col = _build_model_frame(analysis_df)
 	X = model_df[feature_cols]
@@ -167,14 +167,14 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 
 def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focus, test_pred_df):
 	# Save modeling artifacts.
-	modeling_dir = OUTPUT_DIR / "modeling"
+	modeling_dir = OUTPUT_DIR / "Modeling"
 	modeling_dir.mkdir(parents=True, exist_ok=True)
 
 	# Correlation focus matrix.
 	corr_txt = correlation_focus.round(4).copy()
 	corr_txt.index.name = "Feature"
 	_write_table_txt(
-		modeling_dir / "correlation.txt", corr_txt,
+		modeling_dir / "Correlation.txt", corr_txt,
 		title="CORRELATION FOCUS MATRIX", index=True,
 	)
 
@@ -212,7 +212,7 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 		axes[3].set_visible(False)
 
 	plt.tight_layout()
-	fig.savefig(modeling_dir / "modeling_overview.png", dpi=150)
+	fig.savefig(modeling_dir / "Modeling_Overview.png", dpi=150)
 	plt.close(fig)
 
 	# Prediction summary.
@@ -248,7 +248,7 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 
 	if summary_rows:
 		_write_table_txt(
-			modeling_dir / "predictions_summary.txt",
+			modeling_dir / "Predictions_Summary.txt",
 			pd.DataFrame(summary_rows).round(4),
 			title="TEST PREDICTIONS SUMMARY",
 		)
@@ -297,7 +297,7 @@ def _plot_model_comparison(export_df, eval_dir):
 		axes[idx].tick_params(axis="x", rotation=18)
 	fig.suptitle("Model Comparison Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(eval_dir / "metrics_comparison.png", dpi=150)
+	fig.savefig(eval_dir / "Metrics_Comparison.png", dpi=150)
 	plt.close(fig)
 
 
@@ -317,7 +317,7 @@ def _plot_actual_vs_predicted(predictions, y_test, eval_dir):
 		axes[idx].set_title(name)
 	fig.suptitle("Actual vs Predicted Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(eval_dir / "actual_vs_predicted.png", dpi=150)
+	fig.savefig(eval_dir / "Actual_Vs_Predicted.png", dpi=150)
 	plt.close(fig)
 
 
@@ -381,7 +381,7 @@ def _plot_diagnostics(model_df, pca_model, eval_dir):
 
 	fig.suptitle("Data Diagnostics Panel", fontsize=14)
 	plt.tight_layout()
-	fig.savefig(eval_dir / "diagnostics.png", dpi=150)
+	fig.savefig(eval_dir / "Diagnostics.png", dpi=150)
 	plt.close(fig)
 
 
@@ -403,7 +403,7 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 				.sort_values("abs_coefficient", ascending=False)
 			)
 			coef_df.insert(0, "rank", range(1, len(coef_df) + 1))
-			_write_table_txt(eval_dir / "linear_importance.txt", coef_df.round(4), title="LINEAR FEATURE IMPORTANCE")
+			_write_table_txt(eval_dir / "Linear_Importance.txt", coef_df.round(4), title="LINEAR FEATURE IMPORTANCE")
 
 	if pca_model is not None and hasattr(pca_model, "components_"):
 		explained_df = pd.DataFrame({
@@ -412,7 +412,7 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 			"cumulative_explained_variance": np.cumsum(pca_model.explained_variance_ratio_),
 		})
 		explained_df.insert(0, "component_rank", range(1, len(explained_df) + 1))
-		_write_table_txt(eval_dir / "pca_variance.txt", explained_df.round(4), title="PCA EXPLAINED VARIANCE")
+		_write_table_txt(eval_dir / "PCA_Variance.txt", explained_df.round(4), title="PCA EXPLAINED VARIANCE")
 
 
 def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, eval_dir):
@@ -490,7 +490,7 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 			})
 
 	if rows:
-		_write_table_txt(eval_dir / "conclusions.txt", pd.DataFrame(rows), title="CONCLUSIONS SUMMARY")
+		_write_table_txt(eval_dir / "Conclusions.txt", pd.DataFrame(rows), title="CONCLUSIONS SUMMARY")
 
 
 # Public evaluation entry
@@ -515,10 +515,10 @@ def evaluate_model_outputs(model_results, save=True):
 	})
 
 	if save:
-		eval_dir = OUTPUT_DIR / "evaluation"
+		eval_dir = OUTPUT_DIR / "Evaluation"
 		eval_dir.mkdir(parents=True, exist_ok=True)
 
-		_write_table_txt(eval_dir / "metrics.txt", export_df, title="MODEL METRICS")
+		_write_table_txt(eval_dir / "Metrics.txt", export_df, title="MODEL METRICS")
 		_plot_model_comparison(export_df, eval_dir)
 		_plot_actual_vs_predicted(predictions, y_test, eval_dir)
 		_plot_diagnostics(model_df, pca_model, eval_dir)

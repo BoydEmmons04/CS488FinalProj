@@ -94,7 +94,7 @@ def _build_model_frame(analysis_df):
 # 2) Linear regression
 # 3) PCA regression
 
-def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
+def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True, output_root=None):
 	# Train all three expert techniques and return results for evaluation.
 	if analysis_df is None:
 		analysis_df = pd.read_csv(CLEANED_DIR / "analysis_table.csv")
@@ -146,7 +146,14 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		test_pred_df[f"pred_{name.lower().replace(' ', '_')}"] = preds
 
 	if save:
-		_save_modeling_artifacts(model_df, target_col, correlation, correlation_focus, test_pred_df)
+		_save_modeling_artifacts(
+			model_df,
+			target_col,
+			correlation,
+			correlation_focus,
+			test_pred_df,
+			output_root=output_root,
+		)
 
 	return {
 		"feature_columns":   feature_cols,
@@ -165,9 +172,10 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	}
 
 
-def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focus, test_pred_df):
+def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focus, test_pred_df, output_root=None):
 	# Save modeling artifacts.
-	modeling_dir = OUTPUT_DIR / "modeling"
+	base_dir = output_root if output_root is not None else OUTPUT_DIR
+	modeling_dir = base_dir / "modeling"
 	modeling_dir.mkdir(parents=True, exist_ok=True)
 
 	# Correlation focus matrix.
@@ -495,7 +503,7 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 
 # Public evaluation entry
 
-def evaluate_model_outputs(model_results, save=True):
+def evaluate_model_outputs(model_results, save=True, output_root=None):
 	# Compute evaluation metrics and save visualization artifacts.
 	y_test         = model_results["y_test"]
 	predictions    = model_results["predictions"]
@@ -515,7 +523,8 @@ def evaluate_model_outputs(model_results, save=True):
 	})
 
 	if save:
-		eval_dir = OUTPUT_DIR / "evaluation"
+		base_dir = output_root if output_root is not None else OUTPUT_DIR
+		eval_dir = base_dir / "evaluation"
 		eval_dir.mkdir(parents=True, exist_ok=True)
 
 		_write_table_txt(eval_dir / "metrics.txt", export_df, title="MODEL METRICS")

@@ -10,14 +10,25 @@ from model import run_modeling_pipeline, evaluate_model_outputs
 OUTPUT_DIR = Path("outputs")
 
 
-def create_output_dirs():
-    # Create output folders.
+def ensure_output_dirs_exist():
+    # Ensure output folders are present.
     (OUTPUT_DIR / "modeling").mkdir(parents=True, exist_ok=True)
     (OUTPUT_DIR / "evaluation").mkdir(parents=True, exist_ok=True)
 
 
+def clear_output_files_for_run():
+    # Regenerate outputs each run by clearing only existing files.
+    for subdir in [OUTPUT_DIR / "modeling", OUTPUT_DIR / "evaluation"]:
+        if not subdir.exists():
+            continue
+        for file_path in subdir.glob("*"):
+            if file_path.is_file():
+                file_path.unlink()
+
+
 def run_pipeline():
-    create_output_dirs()
+    ensure_output_dirs_exist()
+    clear_output_files_for_run()
 
     # Stage 1 & 2: load raw data, clean it, and build the route-quarter feature table.
     preprocess_all_data()

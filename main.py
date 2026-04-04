@@ -1,5 +1,5 @@
 # Filename: main.py
-# Purpose: Orchestrate the full pipeline in stage order.
+# Purpose: Run the full pipeline in stage order.
 
 from pathlib import Path
 

@@ -1,9 +1,5 @@
 # Filename: model.py
-# Purpose:
-#   Stage 3 – Feature selection and model frame construction.
-#   Stage 4 – Three expert techniques: Correlation Analysis, Linear Regression, PCA Regression.
-#   Stage 5 – Performance evaluation metrics: RMSE, MAPE, R², SNR, prediction accuracy.
-#   Stage 6 – Data visualization: heatmaps, histograms, scatter plots, accuracy panels.
+# Purpose: Train models, evaluate results, and save outputs.
 
 from pathlib import Path
 
@@ -22,11 +18,10 @@ CLEANED_DIR = Path("cleaned_data")
 OUTPUT_DIR  = Path("outputs")
 
 
-# ── SHARED HELPER ──────────────────────────────────────────────────────────────
+# Shared helper
 
 def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	# Write a dataframe to a readable plain-text table, split into column blocks
-	# so wide tables stay legible in a fixed-width file.
+	# Write a readable text table.
 	lines = []
 	df_display = df.reset_index() if index else df.copy()
 	if title:
@@ -44,28 +39,27 @@ def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
 	path.write_text("\n".join(lines), encoding="utf-8")
 
 
-# ── STAGE 3: FEATURE SELECTION & MODEL FRAME ──────────────────────────────────
+# Stage 3: model frame
 
 def _build_model_frame(analysis_df):
-	# Add temporal load-factor features, impute missing values with column medians,
-	# and return the clean dataframe alongside the final feature and target column lists.
+	# Build model frame and fill missing values.
 	df = analysis_df.copy()
 	if "route" not in df.columns:
 		df["route"] = df["ORIGIN"] + "-" + df["DEST"]
-	# Sort before shifting so each route's lag aligns to the right prior quarter.
+	# Sort before lag/rolling calculations.
 	df = df.sort_values(["route", "YEAR", "QUARTER"]).reset_index(drop=True)
 
-	# Route-average and lagged load factor capture capacity context beyond a single quarter.
+	# Load-factor context features.
 	df["route_avg_load_factor"] = df.groupby("route")["load_factor"].transform("mean")
 	df["lag_load_factor"]       = df.groupby("route")["load_factor"].shift(1)
 	df["rolling_load_factor_2"] = df.groupby("route")["load_factor"].transform(
 		lambda s: s.rolling(2, min_periods=1).mean()
 	)
-	# When there is no prior quarter the lag falls back to the current value.
+	# Use current value when no prior quarter exists.
 	df["lag_load_factor"]       = df["lag_load_factor"].fillna(df["load_factor"])
 	df["rolling_load_factor_2"] = df["rolling_load_factor_2"].fillna(df["load_factor"])
 
-	# Fixed 19-feature set covering capacity, distance, fuel, competition, and delay signals.
+	# Fixed feature set.
 	feature_candidates = [
 		"load_factor", "route_avg_load_factor", "lag_load_factor", "rolling_load_factor_2",
 		"market_distance", "avg_fuel_price", "passengers_db1b",
@@ -78,7 +72,7 @@ def _build_model_frame(analysis_df):
 	]
 	feature_cols = [c for c in feature_candidates if c in df.columns]
 
-	# Impute each numeric predictor with its median; is_saturated gets 0 for unknowns.
+	# Median imputation for numeric fields.
 	for col in feature_cols:
 		if col == "is_saturated":
 			df[col] = df[col].fillna(0).astype(int)
@@ -95,13 +89,13 @@ def _build_model_frame(analysis_df):
 	return df.dropna(subset=required).copy(), feature_cols, target_col
 
 
-# ── STAGE 4: EXPERT TECHNIQUES ────────────────────────────────────────────────
-# Technique 1 – Correlation Analysis   : pairwise Pearson correlations, focus matrix + heatmap.
-# Technique 2 – Linear Regression      : OLS on the full 19-feature set.
-# Technique 3 – PCA Regression         : StandardScaler → PCA (95% variance) → OLS.
+# Stage 4: core techniques
+# 1) Correlation analysis
+# 2) Linear regression
+# 3) PCA regression
 
 def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
-	"""Train all three expert techniques and return results for evaluation."""
+	# Train all three expert techniques and return results for evaluation.
 	if analysis_df is None:
 		analysis_df = pd.read_csv(CLEANED_DIR / "analysis_table.csv")
 
@@ -109,18 +103,16 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	X = model_df[feature_cols]
 	y = model_df[target_col]
 
-	# Fixed seed keeps the 80/20 train-test split identical across runs.
+	# Fixed split for reproducibility.
 	X_train, X_test, y_train, y_test = train_test_split(
 		X, y, test_size=test_size, random_state=random_state
 	)
 
-	# --- Technique 2: Linear Regression ---
+	# Linear Regression
 	linear_model = LinearRegression()
 	linear_model.fit(X_train, y_train)
 
-	# --- Technique 3: PCA Regression ---
-	# Features are standardised first so scale differences do not distort PCA components.
-	# Components retaining 95% of total variance are kept (typically 9 of 19).
+	# PCA Regression
 	scaler        = StandardScaler()
 	X_train_scaled = scaler.fit_transform(X_train)
 	X_test_scaled  = scaler.transform(X_test)
@@ -139,8 +131,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 		"PCA Regression":    pca_regression,
 	}
 
-	# --- Technique 1: Correlation Analysis ---
-	# Full matrix feeds the heatmap; focus matrix is saved as a readable text table.
+	# Correlation Analysis
 	correlation = model_df[feature_cols + [target_col]].corr(numeric_only=True)
 	focus_cols  = [c for c in [
 		"load_factor", "competition_unique_carriers",
@@ -148,7 +139,7 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 	] if c in correlation.columns]
 	correlation_focus = correlation[focus_cols].loc[focus_cols].copy()
 
-	# Build a per-sample prediction table for the summary text output.
+	# Build prediction table for export.
 	test_pred_df = X_test.copy()
 	test_pred_df["actual_avg_fare"] = y_test.values
 	for name, preds in predictions.items():
@@ -175,11 +166,11 @@ def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save
 
 
 def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focus, test_pred_df):
-	# Write the correlation focus table, overview panel, and prediction summary.
+	# Save modeling artifacts.
 	modeling_dir = OUTPUT_DIR / "modeling"
 	modeling_dir.mkdir(parents=True, exist_ok=True)
 
-	# Technique 1 output: correlation focus matrix as text.
+	# Correlation focus matrix.
 	corr_txt = correlation_focus.round(4).copy()
 	corr_txt.index.name = "Feature"
 	_write_table_txt(
@@ -187,7 +178,7 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 		title="CORRELATION FOCUS MATRIX", index=True,
 	)
 
-	# Overview panel: full correlation heatmap + three hypothesis-relevant scatter plots.
+	# Overview panel.
 	fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 	axes = axes.flatten()
 
@@ -224,7 +215,7 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 	fig.savefig(modeling_dir / "modeling_overview.png", dpi=150)
 	plt.close(fig)
 
-	# Prediction summary: per-model error statistics over the test set.
+	# Prediction summary.
 	pred_export_cols = [
 		"actual_avg_fare", "pred_linear_regression", "pred_pca_regression",
 		"load_factor", "avg_fuel_price", "passengers_db1b",
@@ -263,13 +254,10 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 		)
 
 
-# ── STAGE 5: PERFORMANCE EVALUATION ───────────────────────────────────────────
+# Stage 5: evaluation metrics
 
 def _compute_metrics(y_true, y_pred):
-	# RMSE: average prediction error in dollars.
-	# MAPE: scale-free accuracy measure.
-	# R²  : proportion of fare variance explained.
-	# SNR : ratio of signal power (mean fare²) to noise power (MSE).
+	# Core regression metrics.
 	rmse = mean_squared_error(y_true, y_pred) ** 0.5
 	mape = mean_absolute_percentage_error(y_true, y_pred)
 	r2   = r2_score(y_true, y_pred)
@@ -278,23 +266,23 @@ def _compute_metrics(y_true, y_pred):
 
 
 def _build_metrics_df(predictions, y_test):
-	# Compute metrics for every model; best model (lowest RMSE) is always row 0.
+	# Compute and sort metrics by RMSE.
 	rows = []
 	for name, y_pred in predictions.items():
 		row = {"model": name}
 		row.update(_compute_metrics(y_test, y_pred))
 		rows.append(row)
 	df = pd.DataFrame(rows).sort_values("RMSE").reset_index(drop=True)
-	# Accuracy = (1 - MAPE) × 100 gives an intuitive percentage interpretation.
+	# Convert to percentage-style fields.
 	df["AccuracyPct"] = ((1.0 - df["MAPE"]) * 100.0).clip(lower=0.0, upper=100.0)
 	df["R2Pct"]       = (df["R2"] * 100.0).clip(lower=0.0, upper=100.0)
 	return df[["model", "RMSE", "MAPE", "R2", "SNR", "AccuracyPct", "R2Pct"]].round(4)
 
 
-# ── STAGE 6: DATA VISUALIZATION ───────────────────────────────────────────────
+# Stage 6: visualization
 
 def _plot_model_comparison(export_df, eval_dir):
-	# Bar charts comparing RMSE, SNR, R², MAPE, and accuracy side by side (Figure 2).
+	# Side-by-side metric comparison.
 	colors = ["#4C78A8", "#54A24B", "#F58518", "#E45756", "#72B7B2"]
 	fig, axes = plt.subplots(1, 5, figsize=(22, 4.5))
 	for idx, (col, hint) in enumerate([
@@ -314,7 +302,7 @@ def _plot_model_comparison(export_df, eval_dir):
 
 
 def _plot_actual_vs_predicted(predictions, y_test, eval_dir):
-	# Scatter of actual vs predicted fare with a perfect-prediction dashed line (Figure 3).
+	# Actual vs predicted scatter plots.
 	model_names = list(predictions.keys())
 	fig, axes = plt.subplots(1, len(model_names), figsize=(8 * len(model_names), 5))
 	if len(model_names) == 1:
@@ -334,13 +322,13 @@ def _plot_actual_vs_predicted(predictions, y_test, eval_dir):
 
 
 def _plot_diagnostics(model_df, pca_model, eval_dir):
-	# Six-panel diagnostics: fare/load histograms, key scatter plots, PCA curve (Figure 4).
+	# Diagnostics panel.
 	if model_df is None or model_df.empty:
 		return
 	fig, axes = plt.subplots(2, 3, figsize=(18, 10))
 	axes = axes.flatten()
 
-	# Fare and load factor distributions reveal the right-skewed fare tail.
+	# Distributions
 	axes[0].hist(model_df["avg_fare"],    bins=35, edgecolor="black", alpha=0.75, color="#4C78A8")
 	axes[0].set_title("Distribution: Avg Fare")
 	axes[0].set_xlabel("avg_fare"); axes[0].set_ylabel("Frequency")
@@ -349,7 +337,7 @@ def _plot_diagnostics(model_df, pca_model, eval_dir):
 	axes[1].set_title("Distribution: Load Factor")
 	axes[1].set_xlabel("load_factor"); axes[1].set_ylabel("Frequency")
 
-	# Core hypothesis scatter: load factor vs average fare.
+	# Load factor vs fare
 	axes[2].scatter(model_df["load_factor"], model_df["avg_fare"], alpha=0.35, edgecolors="none")
 	axes[2].set_title("Load Factor vs Avg Fare")
 	axes[2].set_xlabel("load_factor"); axes[2].set_ylabel("avg_fare")
@@ -361,7 +349,7 @@ def _plot_diagnostics(model_df, pca_model, eval_dir):
 	else:
 		axes[3].set_visible(False)
 
-	# Fare and load factor trend over available quarters.
+	# Quarter-level trend
 	time_df = (
 		model_df.groupby(["YEAR", "QUARTER"], as_index=False)
 		.agg(avg_fare=("avg_fare", "mean"), avg_load_factor=("load_factor", "mean"))
@@ -377,7 +365,7 @@ def _plot_diagnostics(model_df, pca_model, eval_dir):
 	axes[4].set_title("Fare & Load Factor Over Time")
 	axes[4].legend(loc="best", fontsize=8)
 
-	# PCA cumulative variance curve shows how many components are needed.
+	# PCA cumulative variance curve
 	if pca_model is not None and hasattr(pca_model, "explained_variance_ratio_"):
 		cum_var = np.cumsum(pca_model.explained_variance_ratio_)
 		axes[5].plot(range(1, len(cum_var) + 1), cum_var, marker="o")
@@ -398,8 +386,7 @@ def _plot_diagnostics(model_df, pca_model, eval_dir):
 
 
 def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
-	# Linear regression coefficients ranked by absolute magnitude (Table 2).
-	# PCA explained variance breakdown (Table 3).
+	# Save linear and PCA importance tables.
 	feature_cols = list(X_test.columns)
 
 	if "Linear Regression" in trained_models:
@@ -429,8 +416,7 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 
 
 def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, eval_dir):
-	# Compact findings table: best model, top Pearson correlations, linear drivers,
-	# explicit hypothesis signals, and PCA components.
+	# Save concise conclusions table.
 	rows = []
 	corr = None
 
@@ -453,7 +439,7 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 		)
 		for feat, val in corr.head(5).items():
 			rows.append({"section": "Top Correlations", "item": feat, "value": f"{val:.3f}", "detail": "Pearson with avg_fare"})
-		# Always include the direct hypothesis variable even if it is not top-5.
+		# Always include load_factor correlation.
 		if "load_factor" in corr.index:
 			rows.append(
 				{
@@ -478,7 +464,7 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 		)
 		for _, row in coef_df.head(5).iterrows():
 			rows.append({"section": "Linear Drivers", "item": row["feature"], "value": f"{row['coefficient']:.3f}", "detail": "Signed linear coefficient"})
-		# Always include load-related coefficients for hypothesis interpretation.
+		# Always include load-related coefficients.
 		for hypothesis_feature in ["load_factor", "is_saturated"]:
 			if hypothesis_feature in coef_df["feature"].values:
 				coef_value = coef_df.loc[coef_df["feature"] == hypothesis_feature, "coefficient"].iloc[0]
@@ -507,10 +493,10 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 		_write_table_txt(eval_dir / "conclusions.txt", pd.DataFrame(rows), title="CONCLUSIONS SUMMARY")
 
 
-# ── PUBLIC EVALUATION ENTRY POINT ─────────────────────────────────────────────
+# Public evaluation entry
 
 def evaluate_model_outputs(model_results, save=True):
-	"""Stages 5 & 6: Compute all evaluation metrics and save visualization artifacts."""
+	# Compute evaluation metrics and save visualization artifacts.
 	y_test         = model_results["y_test"]
 	predictions    = model_results["predictions"]
 	trained_models = model_results["trained_models"]
@@ -520,7 +506,7 @@ def evaluate_model_outputs(model_results, save=True):
 
 	metrics_df = _build_metrics_df(predictions, y_test)
 
-	# Rename columns for display in output files and plots.
+	# Rename for output files and plots.
 	export_df = metrics_df.rename(columns={
 		"model":       "Model",
 		"RMSE":        "RMSE_USD",

@@ -1,13 +1,11 @@
 # Filename: data.py
-# Purpose:
-#   Stage 1 – Load raw CSVs, filter to Q1 2025 and target airports, write cleaned tables.
-#   Stage 2 – Merge cleaned sources and build the route-quarter feature table for modeling.
+# Purpose: Preprocess raw data and build the analysis table.
 
 from pathlib import Path
 
 import pandas as pd
 
-# ── PATHS & SCOPE ──────────────────────────────────────────────────────────────
+# Paths and scope
 
 DATA_DIR    = Path("Project Datasets")
 CLEANED_DIR = Path("cleaned_data")
@@ -18,10 +16,10 @@ TX_AIRPORTS = ["DFW", "IAH", "DAL", "HOU", "AUS", "SAT", "ELP", "MAF", "ABI", "A
 TARGET_AIRPORTS = set(CA_AIRPORTS + GA_AIRPORTS + TX_AIRPORTS)
 
 
-# ── STAGE 1: DATA PREPROCESSING ───────────────────────────────────────────────
+# Stage 1: data preprocessing
 
 def _load_competition():
-	# Competition flight file is large, so we read and filter in chunks.
+	# Read in chunks because this file is large.
 	file_path = DATA_DIR / "Competition (Airline Count)" / "US Flights Data (2025, Q1) - Flight Dataset.csv"
 	chunks = []
 	for chunk in pd.read_csv(file_path, chunksize=100_000):
@@ -38,7 +36,7 @@ def _load_competition():
 
 
 def _load_db1b(state):
-	# DB1B ticket data: keep only Q1 2025 rows at target airports.
+	# Keep only Q1 2025 rows at target airports.
 	file_path = DATA_DIR / "DB1BMarket Airline Ticket Data" / f"{state}_T_DB1B_MARKET.csv"
 	cols = ["YEAR", "QUARTER", "ORIGIN", "DEST", "PASSENGERS", "MARKET_FARE", "MARKET_DISTANCE"]
 	chunks = []
@@ -54,8 +52,7 @@ def _load_db1b(state):
 
 
 def _load_delay():
-	# BTS delay cause data: Q1 2025 rows at target airports.
-	# Some numeric columns are stored as text in the raw file.
+	# Delay-cause rows for Q1 2025 at target airports.
 	file_path = DATA_DIR / "Flight Delays" / "ot_delaycause1_DL" / "Airline_Delay_Cause.csv"
 	df = pd.read_csv(file_path)
 	df = df[(df["year"] == 2025) & (df["month"].isin([1, 2, 3]))]
@@ -72,7 +69,7 @@ def _load_delay():
 
 
 def _load_fuel():
-	# Gulf Coast jet fuel spot prices filtered to Q1 2025.
+	# Fuel prices for Q1 2025.
 	file_path = DATA_DIR / "Fuel Prices" / "DJFUELUSGULF.csv"
 	df = pd.read_csv(file_path)
 	df["observation_date"] = pd.to_datetime(df["observation_date"])
@@ -82,7 +79,7 @@ def _load_fuel():
 
 
 def _load_t100(state):
-	# T-100 segment stats for one state, Q1 2025 only.
+	# T-100 stats for one state in Q1 2025.
 	file_path = DATA_DIR / "T-100 (Load Factor)" / f"{state}_T_T100D_SEGMENT_US_CARRIER_ONLY.csv"
 	df = pd.read_csv(file_path)
 	df = df[(df["YEAR"] == 2025) & (df["QUARTER"] == 1)]
@@ -92,7 +89,7 @@ def _load_t100(state):
 
 
 def preprocess_all_data(output_dir=CLEANED_DIR):
-	"""Stage 1: Load all five raw sources, scope them to Q1 2025, and write cleaned CSVs."""
+	# Load the five raw sources, filter, and write cleaned CSVs.
 	print("Loading competition data...")
 	competition_df = _load_competition()
 
@@ -124,22 +121,22 @@ def preprocess_all_data(output_dir=CLEANED_DIR):
 	print("Preprocessing complete. Cleaned datasets saved to", output_dir)
 
 
-# ── STAGE 2: FEATURE ENGINEERING & ANALYSIS TABLE ─────────────────────────────
+# Stage 2: feature engineering
 
 def _safe_divide(numerator, denominator):
-	# Zero denominators become NaN rather than inf.
+	# Avoid division by zero.
 	return numerator / denominator.where(denominator != 0)
 
 
 def _agg_competition(comp_df):
-	# Summarize flight counts, carrier count, and delay signals by route and quarter.
+	# Route-quarter competition summary.
 	comp_df = comp_df.copy()
 	comp_df["Date"]        = pd.to_datetime(comp_df["Date"])
 	comp_df["YEAR"]        = comp_df["Date"].dt.year
 	comp_df["QUARTER"]     = comp_df["Date"].dt.quarter
 	comp_df["Delay"]       = pd.to_numeric(comp_df["Delay"], errors="coerce")
 	comp_df["Cancelled"]   = pd.to_numeric(comp_df["Cancelled"], errors="coerce").fillna(0)
-	# BTS standard: a flight is delayed if it arrives 15+ minutes late.
+	# Delayed flight indicator (15+ minutes).
 	comp_df["is_delayed_15"] = (comp_df["Delay"] >= 15).astype(int)
 	return (
 		comp_df.groupby(["YEAR", "QUARTER", "Origin", "Dest"], as_index=False)
@@ -155,8 +152,7 @@ def _agg_competition(comp_df):
 
 
 def _agg_delay(delay_df):
-	# Compute airport-level arrival delay and cancellation rates by quarter.
-	# The raw file uses month; convert to quarter for the join key.
+	# Airport-quarter delay and cancellation rates.
 	delay_df = delay_df.copy()
 	delay_df["QUARTER"] = ((delay_df["month"] - 1) // 3) + 1
 	agg = (
@@ -188,7 +184,7 @@ def _agg_delay(delay_df):
 
 
 def _agg_db1b(db1b_df):
-	# Average fare, total passengers, and mean distance per route-quarter.
+	# Route-quarter fare, passengers, and distance.
 	return (
 		db1b_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
 		.agg(
@@ -200,7 +196,7 @@ def _agg_db1b(db1b_df):
 
 
 def _agg_t100(t100_df):
-	# Total passengers, seats, and departures per route-quarter (needed to compute load factor).
+	# Route-quarter traffic and capacity totals.
 	return (
 		t100_df.groupby(["YEAR", "QUARTER", "ORIGIN", "DEST"], as_index=False)
 		.agg(
@@ -212,7 +208,7 @@ def _agg_t100(t100_df):
 
 
 def _agg_fuel(fuel_df):
-	# Quarterly average jet fuel price.
+	# Quarterly average fuel price.
 	fuel_df = fuel_df.copy()
 	fuel_df["observation_date"] = pd.to_datetime(fuel_df["observation_date"])
 	fuel_df["YEAR"]    = fuel_df["observation_date"].dt.year
@@ -221,13 +217,7 @@ def _agg_fuel(fuel_df):
 
 
 def build_analysis_table(save=True):
-	"""Stage 2: Merge all cleaned sources into the route-quarter analysis table.
-
-	Join order:
-	  DB1B (fares + demand) INNER T-100 (capacity) → ensures only routes with
-	  both fare and traffic data are kept, then LEFT join competition, fuel,
-	  and delay features so missing auxiliary data doesn't drop valid routes.
-	"""
+	# Merge cleaned sources into the route-quarter analysis table.
 	competition = pd.read_csv(CLEANED_DIR / "competition_cleaned.csv")
 	delay       = pd.read_csv(CLEANED_DIR / "delay_cleaned.csv")
 	db1b        = pd.read_csv(CLEANED_DIR / "db1b_cleaned.csv")
@@ -247,8 +237,7 @@ def build_analysis_table(save=True):
 		.merge(fuel_quarterly, on=["YEAR", "QUARTER"],                 how="left")
 	)
 
-	# Attach delay severity features for both the origin and destination airports,
-	# then average them into a single route-level value for each delay category.
+	# Add origin/destination delay features, then average to route level.
 	origin_delay = delay_airport.rename(columns={
 		"airport":                   "ORIGIN",
 		"airport_arr_delay_rate":    "origin_arr_delay_rate",
@@ -273,10 +262,10 @@ def build_analysis_table(save=True):
 		.merge(dest_delay,   on=["YEAR", "QUARTER", "DEST"],   how="left")
 	)
 
-	# Core hypothesis variable: ratio of passengers carried to available seats.
+	# Load factor = passengers / seats.
 	df["load_factor"] = _safe_divide(df["passengers_t100"], df["seats"])
 
-	# Route-level delay features averaged across both endpoints.
+	# Route-level delay features.
 	df["route_avg_arr_delay_rate"]      = df[["origin_arr_delay_rate",           "dest_arr_delay_rate"]].mean(axis=1)
 	df["route_avg_cancel_rate"]         = df[["origin_cancel_rate",              "dest_cancel_rate"]].mean(axis=1)
 	df["route_weather_delay_share"]     = df[["origin_weather_delay_share",      "dest_weather_delay_share"]].mean(axis=1)
@@ -284,14 +273,14 @@ def build_analysis_table(save=True):
 	df["route_late_aircraft_delay_share"] = df[["origin_late_aircraft_delay_share", "dest_late_aircraft_delay_share"]].mean(axis=1)
 	df["route_carrier_delay_share"]     = df[["origin_carrier_delay_share",      "dest_carrier_delay_share"]].mean(axis=1)
 
-	# Routes with no competition record get zero — not missing.
+	# Fill missing competition fields with zero.
 	for col in ["competition_flights", "competition_unique_carriers", "competition_avg_delay",
 	            "competition_cancel_rate", "competition_delay15_rate"]:
 		if col in df.columns:
 			df[col] = df[col].fillna(0)
 
 	df["route"] = df["ORIGIN"] + "-" + df["DEST"]
-	# Binary flag: routes at or above 80% load are considered capacity-saturated.
+	# Saturation flag for routes at 80%+ load.
 	df["is_saturated"] = (df["load_factor"] >= 0.8).astype(int)
 
 	df = df.sort_values(["YEAR", "QUARTER", "ORIGIN", "DEST"]).reset_index(drop=True)

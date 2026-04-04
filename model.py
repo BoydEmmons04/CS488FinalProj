@@ -429,8 +429,10 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 
 
 def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, eval_dir):
-	# Compact findings table: best model, top Pearson correlations, linear drivers, PCA components.
+	# Compact findings table: best model, top Pearson correlations, linear drivers,
+	# explicit hypothesis signals, and PCA components.
 	rows = []
+	corr = None
 
 	if export_df is not None and not export_df.empty:
 		best = export_df.sort_values("RMSE_USD").iloc[0]
@@ -451,6 +453,16 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 		)
 		for feat, val in corr.head(5).items():
 			rows.append({"section": "Top Correlations", "item": feat, "value": f"{val:.3f}", "detail": "Pearson with avg_fare"})
+		# Always include the direct hypothesis variable even if it is not top-5.
+		if "load_factor" in corr.index:
+			rows.append(
+				{
+					"section": "Hypothesis Signals",
+					"item": "load_factor correlation",
+					"value": f"{corr['load_factor']:.3f}",
+					"detail": "Pearson correlation with avg_fare",
+				}
+			)
 
 	linear_model = trained_models.get("Linear Regression") if trained_models else None
 	if linear_model is not None and hasattr(linear_model, "coef_"):
@@ -466,6 +478,18 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 		)
 		for _, row in coef_df.head(5).iterrows():
 			rows.append({"section": "Linear Drivers", "item": row["feature"], "value": f"{row['coefficient']:.3f}", "detail": "Signed linear coefficient"})
+		# Always include load-related coefficients for hypothesis interpretation.
+		for hypothesis_feature in ["load_factor", "is_saturated"]:
+			if hypothesis_feature in coef_df["feature"].values:
+				coef_value = coef_df.loc[coef_df["feature"] == hypothesis_feature, "coefficient"].iloc[0]
+				rows.append(
+					{
+						"section": "Hypothesis Signals",
+						"item": f"{hypothesis_feature} coefficient",
+						"value": f"{coef_value:.3f}",
+						"detail": "Linear coefficient holding other features fixed",
+					}
+				)
 
 	if pca_model is not None and hasattr(pca_model, "components_"):
 		feat_names = list(X_test.columns)

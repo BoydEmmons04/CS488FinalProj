@@ -1,11 +1,24 @@
 # Filename: main.py
 # Purpose: Orchestrate the full pipeline in stage order.
 
+from pathlib import Path
+
 from data  import preprocess_all_data, build_analysis_table
 from model import run_modeling_pipeline, evaluate_model_outputs
 
 
+OUTPUT_DIR = Path("outputs")
+
+
+def create_output_dirs():
+    # Create output folders.
+    (OUTPUT_DIR / "modeling").mkdir(parents=True, exist_ok=True)
+    (OUTPUT_DIR / "evaluation").mkdir(parents=True, exist_ok=True)
+
+
 def run_pipeline():
+    create_output_dirs()
+
     # Stage 1 & 2: load raw data, clean it, and build the route-quarter feature table.
     preprocess_all_data()
     analysis_df = build_analysis_table(save=True)

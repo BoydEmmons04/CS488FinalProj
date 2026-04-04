@@ -1,10 +1,10 @@
 # Airline Load Factor and Airfare Analysis
 
-This project tests whether higher airline load factor is associated with higher airfare, using a core pipeline built around:
+This project tests whether higher airline load factor is associated with higher airfare, using three expert techniques:
 
-1. Correlation analysis
+1. Correlation Analysis
 2. Linear Regression
-3. PCA
+3. PCA Regression (dimensionality reduction + regression)
 
 ## Requirements
 
@@ -28,12 +28,22 @@ python main.py
 ## Core Pipeline Files
 
 ```text
-main.py        # Orchestrates full pipeline
-ingest.py      # Data preprocessing and cleaned CSV generation
-features.py    # Feature construction and analysis table build
-modeling.py    # Correlation analysis + Linear Regression + PCA
-evaluation.py  # Metrics and project-aligned visual outputs
+main.py   # Orchestrates the full pipeline in stage order
+data.py   # Stage 1 (preprocessing) + Stage 2 (feature engineering)
+model.py  # Stage 3 (feature selection) + Stage 4 (expert techniques)
+		  # + Stage 5 (evaluation metrics) + Stage 6 (visualizations)
 ```
+
+## Pipeline Stages
+
+| Stage | Description | File |
+|-------|-------------|------|
+| 1 | Data Preprocessing — load raw CSVs, filter to Q1 2025 and target airports, write cleaned tables | data.py |
+| 2 | Feature Engineering — merge sources, compute load factor, delay shares, is_saturated flag | data.py |
+| 3 | Feature Selection — add lag/rolling load features, impute medians, fix 19-feature set | model.py |
+| 4 | Expert Techniques — Correlation Analysis, Linear Regression, PCA Regression | model.py |
+| 5 | Performance Evaluation — RMSE, MAPE, R², SNR, prediction accuracy | model.py |
+| 6 | Data Visualization — heatmaps, histograms, scatter plots, accuracy panels | model.py |
 
 ## Data Flow
 
@@ -51,18 +61,16 @@ evaluation.py  # Metrics and project-aligned visual outputs
 
 Modeling outputs:
 
-1. `outputs/modeling/correlation_focus.txt`
-2. `outputs/modeling/modeling_overview_panel.png`
-3. `outputs/modeling/test_predictions_summary.txt`
+1. `outputs/modeling/correlation.txt`
+2. `outputs/modeling/modeling_overview.png`
+3. `outputs/modeling/predictions_summary.txt`
 
 Evaluation outputs:
 
-1. `outputs/evaluation/model_metrics.txt`
-2. `outputs/evaluation/model_comparison_panel.png`
-3. `outputs/evaluation/actual_vs_predicted_panel.png`
-4. `outputs/evaluation/data_diagnostics_panel.png`
-5. `outputs/evaluation/feature_importance_linear.txt`
-6. `outputs/evaluation/pca_explained_variance.txt`
-7. `outputs/evaluation/time_series_summary.txt`
-8. `outputs/evaluation/conclusions_summary.txt`
-9. `outputs/evaluation/report_summary_table.txt`
+1. `outputs/evaluation/metrics.txt`
+2. `outputs/evaluation/metrics_comparison.png`
+3. `outputs/evaluation/actual_vs_predicted.png`
+4. `outputs/evaluation/diagnostics.png`
+5. `outputs/evaluation/linear_importance.txt`
+6. `outputs/evaluation/pca_variance.txt`
+7. `outputs/evaluation/conclusions.txt`

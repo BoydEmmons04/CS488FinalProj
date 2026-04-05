@@ -54,23 +54,24 @@ model.py  # Stage 3 (feature selection) + Stage 4 (expert techniques)
 	- Fuel Prices
 	- T-100 (Load Factor)
 2. Cleaned data written to `cleaned_data/`
-3. Modeling artifacts written to `outputs/modeling/`
-4. Evaluation artifacts written to `outputs/evaluation/`
+3. Analysis table written to `outputs/analysis_table.csv`
+4. Modeling artifacts written to `outputs/modeling/`
+5. Evaluation artifacts written to `outputs/evaluation/`
 
 ## Output Artifacts (Current)
 
 Modeling outputs:
 
-1. `outputs/modeling/correlation.txt`
+1. `outputs/modeling/correlation.csv`
 2. `outputs/modeling/modeling_overview.png`
-3. `outputs/modeling/predictions_summary.txt`
+3. `outputs/modeling/predictions_summary.csv`
 
 Evaluation outputs:
 
-1. `outputs/evaluation/metrics.txt`
+1. `outputs/evaluation/metrics.csv`
 2. `outputs/evaluation/metrics_comparison.png`
 3. `outputs/evaluation/actual_vs_predicted.png`
 4. `outputs/evaluation/diagnostics.png`
-5. `outputs/evaluation/linear_importance.txt`
-6. `outputs/evaluation/pca_variance.txt`
-7. `outputs/evaluation/conclusions.txt`
+5. `outputs/evaluation/linear_importance.csv`
+6. `outputs/evaluation/pca_variance.csv`
+7. `outputs/evaluation/conclusions.csv`

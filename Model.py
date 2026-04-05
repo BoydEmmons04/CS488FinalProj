@@ -20,23 +20,10 @@ OUTPUT_DIR  = Path("Outputs")
 
 # Shared helper
 
-def _write_table_txt(path, df, title=None, index=False, max_cols_per_block=6):
-	# Write a readable text table.
-	lines = []
-	df_display = df.reset_index() if index else df.copy()
-	if title:
-		lines.append(title)
-		lines.append("=" * len(title))
-	lines.append(f"Rows: {len(df_display)} | Columns: {len(df_display.columns)}")
-	lines.append("")
-	columns = list(df_display.columns)
-	for start in range(0, len(columns), max_cols_per_block):
-		block = columns[start : start + max_cols_per_block]
-		lines.append(f"[Columns {start + 1}-{start + len(block)} of {len(columns)}]")
-		lines.append("-" * 80)
-		lines.append(df_display[block].to_string(index=False))
-		lines.append("")
-	path.write_text("\n".join(lines), encoding="utf-8")
+def _write_csv(path, df, title=None, index=False, max_cols_per_block=6):
+	# Write a CSV table.
+	df_out = df.reset_index() if index else df.copy()
+	df_out.to_csv(path, index=False)
 
 
 # Stage 3: model frame
@@ -97,7 +84,7 @@ def _build_model_frame(analysis_df):
 def run_modeling_pipeline(analysis_df=None, test_size=0.2, random_state=42, save=True):
 	# Train all three expert techniques and return results for evaluation.
 	if analysis_df is None:
-		analysis_df = pd.read_csv(CLEANED_DIR / "Analysis_Table.csv")
+		analysis_df = pd.read_csv(OUTPUT_DIR / "Analysis_Table.csv")
 
 	model_df, feature_cols, target_col = _build_model_frame(analysis_df)
 	X = model_df[feature_cols]
@@ -173,8 +160,8 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 	# Correlation focus matrix.
 	corr_txt = correlation_focus.round(4).copy()
 	corr_txt.index.name = "Feature"
-	_write_table_txt(
-		modeling_dir / "Correlation.txt", corr_txt,
+	_write_csv(
+		modeling_dir / "Correlation.csv", corr_txt,
 		title="CORRELATION FOCUS MATRIX", index=True,
 	)
 
@@ -247,8 +234,8 @@ def _save_modeling_artifacts(model_df, target_col, correlation, correlation_focu
 		})
 
 	if summary_rows:
-		_write_table_txt(
-			modeling_dir / "Predictions_Summary.txt",
+		_write_csv(
+			modeling_dir / "Predictions_Summary.csv",
 			pd.DataFrame(summary_rows).round(4),
 			title="TEST PREDICTIONS SUMMARY",
 		)
@@ -403,7 +390,7 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 				.sort_values("abs_coefficient", ascending=False)
 			)
 			coef_df.insert(0, "rank", range(1, len(coef_df) + 1))
-			_write_table_txt(eval_dir / "Linear_Importance.txt", coef_df.round(4), title="LINEAR FEATURE IMPORTANCE")
+			_write_csv(eval_dir / "Linear_Importance.csv", coef_df.round(4), title="LINEAR FEATURE IMPORTANCE")
 
 	if pca_model is not None and hasattr(pca_model, "components_"):
 		explained_df = pd.DataFrame({
@@ -412,7 +399,7 @@ def _save_feature_importance(trained_models, X_test, pca_model, eval_dir):
 			"cumulative_explained_variance": np.cumsum(pca_model.explained_variance_ratio_),
 		})
 		explained_df.insert(0, "component_rank", range(1, len(explained_df) + 1))
-		_write_table_txt(eval_dir / "PCA_Variance.txt", explained_df.round(4), title="PCA EXPLAINED VARIANCE")
+		_write_csv(eval_dir / "PCA_Variance.csv", explained_df.round(4), title="PCA EXPLAINED VARIANCE")
 
 
 def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, eval_dir):
@@ -490,7 +477,7 @@ def _save_conclusions(export_df, model_df, trained_models, X_test, pca_model, ev
 			})
 
 	if rows:
-		_write_table_txt(eval_dir / "Conclusions.txt", pd.DataFrame(rows), title="CONCLUSIONS SUMMARY")
+		_write_csv(eval_dir / "Conclusions.csv", pd.DataFrame(rows), title="CONCLUSIONS SUMMARY")
 
 
 # Public evaluation entry
@@ -518,7 +505,7 @@ def evaluate_model_outputs(model_results, save=True):
 		eval_dir = OUTPUT_DIR / "Evaluation"
 		eval_dir.mkdir(parents=True, exist_ok=True)
 
-		_write_table_txt(eval_dir / "Metrics.txt", export_df, title="MODEL METRICS")
+		_write_csv(eval_dir / "Metrics.csv", export_df, title="MODEL METRICS")
 		_plot_model_comparison(export_df, eval_dir)
 		_plot_actual_vs_predicted(predictions, y_test, eval_dir)
 		_plot_diagnostics(model_df, pca_model, eval_dir)

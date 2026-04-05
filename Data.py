@@ -9,6 +9,7 @@ import pandas as pd
 
 DATA_DIR    = Path("Project Datasets")
 CLEANED_DIR = Path("Cleaned_Data")
+OUTPUT_DIR  = Path("Outputs")
 
 CA_AIRPORTS = ["LAX", "SFO", "SAN", "OAK", "ONT", "BUR", "SJC", "SMF", "PSP", "FAT", "BFL"]
 GA_AIRPORTS = ["ATL", "SAV", "AGS", "ABY"]
@@ -286,8 +287,8 @@ def build_analysis_table(save=True):
 	df = df.sort_values(["YEAR", "QUARTER", "ORIGIN", "DEST"]).reset_index(drop=True)
 
 	if save:
-		CLEANED_DIR.mkdir(exist_ok=True)
-		df.to_csv(CLEANED_DIR / "Analysis_Table.csv", index=False)
+		OUTPUT_DIR.mkdir(exist_ok=True)
+		df.to_csv(OUTPUT_DIR / "Analysis_Table.csv", index=False)
 
 	return df
 

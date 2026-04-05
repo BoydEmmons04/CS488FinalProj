@@ -51,7 +51,7 @@ The results are organized around three components of the hypothesis: (1) whether
 
 ### Load factor exhibits a weak correlation with fare
 
-Across all 30 numeric features in the dataset, load factor ranks 16th in its Pearson correlation with average fare, at r = 0.0725, accounting for approximately 0.5% of fare variance (r² = 0.005). By comparison, market distance — the strongest correlate — has r = 0.5532 (approximately 30.6% of variance), and the binary `is_saturated` flag (≥80% load factor) has r = 0.2191. The full correlation ranking is provided in Appendix A.6 (source: full correlation matrix computed in `Model.py`, key values summarized in `Outputs/Evaluation/Conclusions.csv`).
+Across all 30 numeric features in the dataset, load factor ranks 16th in its Pearson correlation with average fare, at r = 0.0725, accounting for approximately 0.5% of fare variance (r² = 0.005). By comparison, market distance — the strongest correlate — has r = 0.5532 (approximately 30.6% of variance), and the binary `is_saturated` flag (≥80% load factor) has r = 0.2191. The full correlation ranking is provided in Appendix A.6 (source: full correlation matrix computed in `Model.py`, key values summarized in `Outputs/Evaluation/Conclusions.txt`).
 
 The scatter plot of load factor versus airfare (source: `Outputs/Modeling/Modeling_Overview.png`, subplot "Load Factor vs Airfare") shows widely dispersed points with no visible upward trend, consistent with this weak correlation.
 
@@ -77,7 +77,7 @@ The hypothesis specifies that the load factor–fare relationship should hold ev
 - **Fuel price** is constant at $2.2231 across all 2,849 rows (std = 0.0000), producing undefined (NaN) correlations and a regression coefficient of exactly $0.00. With zero variance, fuel price cannot function as a control variable.
 - **Demand** (`passengers_db1b`) has a Pearson correlation of 0.0023 with fare, effectively zero.
 
-Because neither variable varies meaningfully within a single-quarter cross-section, the hypothesis condition "even when fuel prices and demand are held constant" cannot be evaluated in this design. The focused correlation matrix illustrating these relationships is in Appendix A.7 (source: `Outputs/Modeling/Correlation.csv`).
+Because neither variable varies meaningfully within a single-quarter cross-section, the hypothesis condition "even when fuel prices and demand are held constant" cannot be evaluated in this design. The focused correlation matrix illustrating these relationships is in Appendix A.7 (source: `Outputs/Modeling/Correlation.txt`).
 
 ### Summary of results
 
@@ -126,7 +126,7 @@ From the shortest to the longest distance quartile, mean fares increase by $106.
 
 ### A.2 Full Model Comparison
 
-Evaluated on 570 test samples (mean actual fare $269.43). Source: `Outputs/Evaluation/Metrics.csv`.
+Evaluated on 570 test samples (mean actual fare $269.43). Source: `Outputs/Evaluation/Metrics.txt`.
 
 | Metric | Linear Regression | PCA Regression | Linear Advantage |
 |---|---|---|---|
@@ -136,11 +136,11 @@ Evaluated on 570 test samples (mean actual fare $269.43). Source: `Outputs/Evalu
 | SNR | 17.16 | 15.64 | 1.53 higher |
 | Accuracy (1−MAPE) | 78.41% | 76.65% | 1.76pp higher |
 
-Linear Regression outperforms PCA Regression on each metric. The MAE of $45.14 corresponds to 16.7% of the mean fare, the median absolute error is $31.78, and the 90th percentile error is $100.46. The largest single prediction error is $419.36. Both models exhibit a slight positive bias in predicted values, with mean residuals of −$5.83 and −$6.42 respectively. Prediction details are from `Outputs/Modeling/Predictions_Summary.csv`; model comparison metrics are from `Outputs/Evaluation/Metrics.csv`; the bar chart visualization is `Outputs/Evaluation/Metrics_Comparison.png`.
+Linear Regression outperforms PCA Regression on each metric. The MAE of $45.14 corresponds to 16.7% of the mean fare, the median absolute error is $31.78, and the 90th percentile error is $100.46. The largest single prediction error is $419.36. Both models exhibit a slight positive bias in predicted values, with mean residuals of −$5.83 and −$6.42 respectively. Prediction details are from `Outputs/Modeling/Predictions_Summary.txt`; model comparison metrics are from `Outputs/Evaluation/Metrics.txt`; the bar chart visualization is `Outputs/Evaluation/Metrics_Comparison.png`.
 
 ### A.3 Prediction Summary
 
-Source: `Outputs/Modeling/Predictions_Summary.csv`.
+Source: `Outputs/Modeling/Predictions_Summary.txt`.
 
 | Metric | Linear Regression | PCA Regression |
 |---|---|---|
@@ -153,11 +153,11 @@ Source: `Outputs/Modeling/Predictions_Summary.csv`.
 | Max AE | $419.36 | $410.11 |
 | Mean Residual | −$5.83 | −$6.42 |
 
-The PCA model compresses the data into 10 principal components, with PC1 dominated by load factor (see `Outputs/Evaluation/PCA_Variance.csv`). It performs worse than the unreduced Linear model on each error metric, indicating that the variance structure captured by PCA — which is largely organized around load factor — does not align closely with fare variation.
+The PCA model compresses the data into 10 principal components, with PC1 dominated by load factor (see `Outputs/Evaluation/PCA_Variance.txt`). It performs worse than the unreduced Linear model on each error metric, indicating that the variance structure captured by PCA — which is largely organized around load factor — does not align closely with fare variation.
 
 ### A.4 PCA Variance Decomposition
 
-Source: `Outputs/Evaluation/PCA_Variance.csv`.
+Source: `Outputs/Evaluation/PCA_Variance.txt`.
 
 | Component | Variance Explained | Cumulative | Top Feature | Loading |
 |---|---|---|---|---|
@@ -172,7 +172,7 @@ Load factor has the largest loading on PC1 (0.394), making it the most prominent
 
 ### A.5 Full Feature Importance Table (Linear Regression)
 
-Source: `Outputs/Evaluation/Linear_Importance.csv`.
+Source: `Outputs/Evaluation/Linear_Importance.txt`.
 
 | Rank | Feature | Coefficient | Abs Coefficient |
 |---|---|---|---|
@@ -198,7 +198,7 @@ Source: `Outputs/Evaluation/Linear_Importance.csv`.
 
 ### A.6 Full Correlation with Average Fare (Top 15)
 
-Source: full correlation matrix computed in `Model.py` via `run_modeling_pipeline()`, top correlations also summarized in `Outputs/Evaluation/Conclusions.csv`.
+Source: full correlation matrix computed in `Model.py` via `run_modeling_pipeline()`, top correlations also summarized in `Outputs/Evaluation/Conclusions.txt`.
 
 | Feature | Pearson r with avg_fare |
 |---|---|
@@ -221,7 +221,7 @@ Source: full correlation matrix computed in `Model.py` via `run_modeling_pipelin
 
 ### A.7 Focused Correlation Matrix
 
-Source: `Outputs/Modeling/Correlation.csv`.
+Source: `Outputs/Modeling/Correlation.txt`.
 
 |  | load_factor | competition_unique_carriers | route_avg_arr_delay_rate | avg_fuel_price | passengers_db1b | avg_fare |
 |---|---|---|---|---|---|---|

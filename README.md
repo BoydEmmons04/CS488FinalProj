@@ -62,16 +62,16 @@ model.py  # Stage 3 (feature selection) + Stage 4 (expert techniques)
 
 Modeling outputs:
 
-1. `outputs/modeling/correlation.csv`
+1. `outputs/modeling/correlation.txt`
 2. `outputs/modeling/modeling_overview.png`
-3. `outputs/modeling/predictions_summary.csv`
+3. `outputs/modeling/predictions_summary.txt`
 
 Evaluation outputs:
 
-1. `outputs/evaluation/metrics.csv`
+1. `outputs/evaluation/metrics.txt`
 2. `outputs/evaluation/metrics_comparison.png`
 3. `outputs/evaluation/actual_vs_predicted.png`
 4. `outputs/evaluation/diagnostics.png`
-5. `outputs/evaluation/linear_importance.csv`
-6. `outputs/evaluation/pca_variance.csv`
-7. `outputs/evaluation/conclusions.csv`
+5. `outputs/evaluation/linear_importance.txt`
+6. `outputs/evaluation/pca_variance.txt`
+7. `outputs/evaluation/conclusions.txt`

@@ -65,6 +65,8 @@ The linear model assigns load factor a coefficient of −$7.15: holding 18 other
 
 The `is_saturated` flag (≥80% load factor) receives a coefficient of +$11.77, suggesting a modest fare premium at high capacity. However, the quartile analysis shows this effect is confined to Q4:
 
+*Table 1 — Mean and Median Fares by Load Factor Quartile*
+
 | Load Factor Quartile | Mean Fare | Median Fare | Routes |
 |---|---|---|---|
 | Q1 (lowest) | $256.66 | $252.06 | 682 |
@@ -86,17 +88,17 @@ Linear Regression (R² = 38.80%, RMSE = $65.04) outperforms PCA Regression (R² 
 
 ![Fig 1.1: Modeling Overview](Outputs/Modeling/Modeling_Overview.png)
 
-*Fig 1.1: Four-panel summary. Top-left: correlation heatmap showing the load factor cluster and fare's weak association with most predictors. Top-right: Load Factor vs. Airfare scatter with no upward trend. Bottom-left: Competition vs. Airfare with mild negative spread. Bottom-right: Delay Rate vs. Airfare with loose positive association.*
+*Fig 1.1: Correlation heatmap (top-left), Load Factor vs. Airfare (top-right), Competition vs. Airfare (bottom-left), Delay Rate vs. Airfare (bottom-right).*
 
-The heatmap isolates the load factor cluster — four variants correlating near 1.0 with each other but barely registering against fare, which is why the linear model assigns them identical coefficients. The Load Factor vs. Airfare scatter is flat where the hypothesis predicts an upward trend. The Delay Rate scatter shows a visible positive spread, consistent with delay features dominating the regression.
+The heatmap isolates the load factor cluster — four variants correlating near 1.0 with each other but barely registering against fare. The Load Factor vs. Airfare scatter is flat where the hypothesis predicts an upward trend, while the Delay Rate scatter shows a positive spread consistent with delay features dominating the regression.
 
 #### Fig 1.2 — Actual vs. Predicted Fares
 
 ![Fig 1.2: Actual vs. Predicted](Outputs/Evaluation/Actual_Vs_Predicted.png)
 
-*Fig 1.2: Predicted versus actual fares for both models on 570 test samples. The diagonal represents perfect prediction.*
+*Fig 1.2: Predicted versus actual fares for both models on 570 test samples.*
 
-Both models cluster around the diagonal at moderate fare levels ($150–$350) but diverge at higher fares. The Linear model's MAE is $45.14 (16.7% of the $269.43 mean fare), with systematic under-prediction beyond $400 driven by distance and delay variables rather than load factor. PCA Regression is visibly more dispersed, consistent with its higher RMSE.
+Both models cluster around the diagonal at moderate fares ($150–$350) but under-predict beyond $400. The Linear model's MAE is $45.14 (16.7% of the $269.43 mean fare). PCA Regression is more dispersed, consistent with its higher RMSE.
 
 #### Fig 1.3 — Diagnostics
 
@@ -104,15 +106,15 @@ Both models cluster around the diagonal at moderate fare levels ($150–$350) bu
 
 *Fig 1.3: Residual histogram, Q-Q plot, and PCA cumulative variance curve.*
 
-Residuals are approximately symmetric around zero with no directional bias. The Q-Q plot shows normality in the core with tail departures expected given fare heterogeneity. The PCA variance curve rises steeply through PC1–PC3 (60.5%) then plateaus — load factor and delay features account for most data variance, but since PCA Regression underperforms, these dimensions do not correspond to fare variation.
+Residuals are symmetric around zero with no directional bias. The PCA variance curve rises steeply through PC1–PC3 (60.5%) then plateaus, but since PCA Regression underperforms, these dimensions do not correspond to fare variation.
 
 #### Fig 1.4 — Metrics Comparison
 
 ![Fig 1.4: Metrics Comparison](Outputs/Evaluation/Metrics_Comparison.png)
 
-*Fig 1.4: RMSE, MAPE, R², SNR, and Accuracy (1−MAPE) for Linear Regression versus PCA Regression.*
+*Fig 1.4: RMSE, MAPE, R², SNR, and Accuracy (1−MAPE) for Linear vs. PCA Regression.*
 
-Linear Regression leads on every metric. The R² gap (38.8% vs. 32.8%) is the key finding: compressing correlated features through PCA reduces predictive power. This rules out multicollinearity as a source of inflated performance and confirms that the variance load factor dominates is not fare-relevant variance.
+Linear Regression leads on every metric. The R² gap (38.8% vs. 32.8%) confirms that compressing correlated features through PCA reduces predictive power, ruling out multicollinearity as a source of inflated performance.
 
 ### Analysis
 

@@ -19,9 +19,11 @@ Carter Boyd — A#
 
 ## Introduction
 
-Airfare pricing is shaped by a combination of operational, economic, and market factors, making it a useful topic for both industry analysis and consumer welfare research. In the U.S. airline industry, capacity management, route-level competition, fuel costs, and operational disruptions such as delays are commonly cited determinants of fares.
+Airfare pricing is shaped by a combination of operational, economic, and market factors, making it a useful topic for both industry analysis and consumer welfare research. According to Wensveen (2023), who provides a comprehensive overview of the global airline industry, airfare outcomes are the product of interacting supply-side costs, demand conditions, and regulatory structures. In the U.S. domestic market specifically, Williams (2022) demonstrates through a structural model of dynamic airline pricing that carriers set fares based on remaining seat availability, stochastic demand, and competitive pressure — establishing that capacity management, route-level competition, fuel costs, and operational disruptions each play measurable roles in determining what passengers pay.
 
-A central indicator of how airlines balance capacity and demand is the load factor, defined as the share of available seats that are sold on a given flight. In recent years, load factors have remained high across much of the industry, raising an important empirical question. When flights operate near capacity on a sustained basis, do airlines obtain greater pricing power, or do competitive and cost constraints limit fare increases? This question motivates the project's primary hypothesis:
+A central indicator of how airlines balance capacity and demand is the load factor, defined as the share of available seats that are sold on a given flight. According to Cramer and Thams (2021), load factor is a core metric in airline revenue management because it reflects how effectively carriers convert available capacity into revenue. Their analysis of revenue management strategy shows that airlines often pursue high load factors through discounted booking classes, meaning that a high load factor does not necessarily correspond to high per-seat revenue. In a related study, Zou et al. (2025) examine load factor dynamics in domestic air markets and find that route distance and airport size are the primary structural drivers of both load factors and ticket prices, with carriers routinely operating above 80% capacity on established routes. This raises an important empirical question. When flights operate near capacity on a sustained basis, do airlines obtain greater pricing power, or do competitive and cost constraints limit fare increases?
+
+The competitive dimension of this question is informed by Ng et al. (2022), who analyze airline yield and competition in the Japanese domestic market during the COVID-19 pandemic. Their findings show that market concentration and competitive dynamics shape pricing independently of capacity utilization, suggesting that competition may constrain fare increases even when load factors are high. Together, these studies frame the empirical tension that motivates the project's primary hypothesis:
 
 **Sustained increases in airline load factors above historical norms lead to disproportionate increases in average airfares, even when fuel prices and total passenger demand are held constant.**
 
@@ -136,11 +138,21 @@ Two directions would strengthen future work. First, expanding the dataset to mul
 
 ## References
 
+### Data Sources
+
 - DB1B: https://transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FHK&QO_fu146_anzr=b4vtv0%20n0q%20Qr56v0n6v10%20f748rB
 - T100: https://www.transtats.bts.gov/DL_SelectFields.aspx?gnoyr_VQ=FIM&QO_fu146_anzr=Nv4%20Pn44vr45
 - Flight Delays: https://www.transtats.bts.gov/ot_delay/ot_delaycause1.asp?type=21&pn=1
 - Fuel Prices: https://fred.stlouisfed.org/series/DJFUELUSGULF
 - Competition (Airline Count): https://rowzero.com/datasets/us-flights-dataset
+
+### Academic Sources
+
+- Cramer, C., & Thams, A. (2021). *Airline Revenue Management*. Springer. https://doi.org/10.1007/978-3-658-33721-6
+- Ng, K. T., Fu, X., Hanaoka, S., & Oum, T. H. (2022). Japanese aviation market performance during the COVID-19 pandemic — Analyzing airline yield and competition in the domestic market. *Transport Policy*, 116, 139–151. https://doi.org/10.1016/j.tranpol.2021.12.007
+- Wensveen, J. (2023). *Air Transportation: A Global Management Perspective* (9th ed.). Routledge. https://doi.org/10.4324/9780429346156
+- Williams, K. R. (2022). The welfare effects of dynamic pricing: Evidence from airline markets. *Econometrica*, 90(2), 831–858. https://doi.org/10.3982/ECTA16180
+- Zou, W., Zhang, Z., Gao, S., Wang, L., & Jiang, Y. (2025). Drivers of short-term essential air service operations: Load factor, pricing, and subsidy policies in China's domestic air market. *Transport Policy*, 150, 103–118. https://doi.org/10.1016/j.tranpol.2024.12.017
 
 ---
 

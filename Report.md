@@ -35,35 +35,35 @@ The empirical approach combines DB1B itinerary-level fare information with T-100
 
 ## Discussion of Methods
 
-Given the integrated dataset described above, the analysis requires methods that can (1) measure the raw association between load factor and fare, (2) estimate load factor's effect while holding other variables constant, and (3) assess whether correlated features inflate or obscure that effect. Three techniques were selected to meet these requirements.
+The analysis requires methods that can (1) measure the raw association between load factor and fare, (2) estimate load factor's effect while controlling for other variables, and (3) assess whether correlated features inflate or obscure that effect. Three techniques were selected.
 
-The analysis table is split 80/20 into training and test sets using a fixed random seed for reproducibility. All models are trained on the same split to ensure results are comparable across techniques.
+The analysis table is split 80/20 into training and test sets using a fixed random seed. All models are trained on the same split for comparability.
 
-The first technique we used was Correlation Analysis. Pearson correlation serves as an initial diagnostic. Because the hypothesis implies a positive directional relationship between load factor and fare, computing pairwise correlations between average fare and all numeric features in the analysis table helps confirm whether the expected association appears in the data and where load factor ranks relative to alternative predictors such as distance, competition, and delay measures.
+**Correlation Analysis.** Pearson correlation serves as an initial diagnostic. Computing pairwise correlations between average fare and all numeric features confirms whether the expected positive association with load factor appears and where it ranks relative to distance, competition, and delay measures.
 
-The second technique we used was Linear Regression. Linear Regression is the primary model because it produces a signed coefficient for each of the 19 features. This directly answers the central question: holding the remaining 18 variables constant, how much does a one-unit change in load factor change fare? This interpretability is essential for hypothesis testing, where the direction and magnitude of load factor's effect (not just overall prediction accuracy) are the quantities of interest. No regularization is applied, since the objective is to preserve coefficient magnitudes for comparison rather than to optimize out-of-sample performance.
+**Linear Regression.** Linear Regression is the primary model because it produces a signed coefficient for each of the 19 features, directly answering: holding the remaining 18 variables constant, how much does a one-unit change in load factor change fare? No regularization is applied since the objective is to preserve coefficient magnitudes for interpretation rather than optimize out-of-sample performance.
 
-The third technique we used was PCA Regression. PCA followed by Linear Regression is included to evaluate whether redundancy among the 19 features affects the linear model's coefficient estimates. Several features are correlated by construction (for example, the four load factor variants and the multiple delay-share measures), and PCA compresses these into orthogonal components ordered by variance explained. Comparing PCA Regression's performance against the unreduced Linear Regression helps indicate whether the main dimensions of variation also carry the fare signal, or whether compression removes information relevant to fare prediction.
+**PCA Regression.** PCA followed by Linear Regression evaluates whether redundancy among features affects the linear model's estimates. Several features are correlated by construction (the four load factor variants, the multiple delay-share measures), and PCA compresses these into orthogonal components ordered by variance explained. Comparing PCA Regression against the unreduced model reveals whether the main dimensions of variation carry the fare signal or whether compression removes fare-relevant information.
 
-The methodology has known limitations. The single-quarter design precludes testing the "sustained over time" dimension of the hypothesis, since lagged and rolling load factor features collapse to the current value when no prior quarters exist. Route-quarter aggregation also smooths route-specific pricing variation, and linear models assume a constant marginal effect that may not capture threshold or nonlinear dynamics.
+**Limitations.** The single-quarter design precludes testing the "sustained over time" dimension of the hypothesis, since lagged and rolling load factor features collapse to the current value with no prior quarters. Route-quarter aggregation smooths route-specific pricing variation, and linear models assume a constant marginal effect that may not capture threshold dynamics.
 
 ## Results, Data Visualization and Analysis
 
 ### Results
 
-The results below address the three testable components of the hypothesis: whether load factor correlates with fare, whether that relationship is disproportionate, and whether it persists after accounting for fuel prices and demand.
+The results address three testable components of the hypothesis: whether load factor correlates with fare, whether that relationship is disproportionate, and whether it persists after accounting for fuel prices and demand.
 
 #### Correlation with Fare
 
-Load factor's Pearson correlation with average fare is r = 0.073, ranking 16th among 30 numeric features and accounting for roughly 0.5% of fare variance (source: `Outputs/Evaluation/Conclusions.txt`; full ranking in Appendix A.6). Market distance leads at r = 0.553 (≈30.6% of variance), followed by the binary `is_saturated` flag at r = 0.219. The hypothesis requires a positive directional association between load factor and fare; a correlation this weak does not establish one.
+Load factor's Pearson correlation with average fare is r = 0.073, ranking 16th among 30 numeric features and accounting for roughly 0.5% of fare variance (full ranking in Appendix A.6). Market distance leads at r = 0.553 (~30.6% of variance), followed by the binary `is_saturated` flag at r = 0.219. A correlation this weak does not establish the positive association the hypothesis requires.
 
-The focused correlation matrix (source: `Outputs/Modeling/Correlation.txt`) also reveals that fuel price produces NaN correlations due to zero within-quarter variance, and passenger demand correlates at 0.002 with fare — effectively zero. Both of the hypothesis's required control variables are inert in this single-quarter design.
+The focused correlation matrix also reveals that fuel price produces NaN correlations due to zero within-quarter variance, and passenger demand correlates at 0.002 with fare. Both control variables are inert in this single-quarter design.
 
 #### Regression Coefficients and Disproportionality
 
-The linear model assigns load factor a coefficient of −$7.15, meaning that after holding 18 other features constant, a one-unit increase in load factor is associated with a $7.15 *decrease* in fare — opposite to the hypothesis direction (source: `Outputs/Evaluation/Linear_Importance.txt`; full table in Appendix A.5). All four load factor variants share this same negative coefficient.
+The linear model assigns load factor a coefficient of −$7.15: holding 18 other features constant, a one-unit increase in load factor is associated with a $7.15 *decrease* in fare — opposite to the hypothesis direction (full table in Appendix A.5). All four load factor variants share this negative coefficient.
 
-The `is_saturated` flag (≥80% load factor) receives a coefficient of +$11.77, suggesting a modest discrete fare premium at high capacity levels. However, the quartile analysis below shows that this effect is confined to Q4 rather than accumulating progressively across the load factor range:
+The `is_saturated` flag (≥80% load factor) receives a coefficient of +$11.77, suggesting a modest fare premium at high capacity. However, the quartile analysis shows this effect is confined to Q4:
 
 | Load Factor Quartile | Mean Fare | Median Fare | Routes |
 |---|---|---|---|
@@ -72,13 +72,13 @@ The `is_saturated` flag (≥80% load factor) receives a coefficient of +$11.77, 
 | Q3 | $279.44 | $271.73 | 681 |
 | Q4 (highest) | $305.15 | $298.22 | 681 |
 
-Q2 has the lowest mean fare, falling below Q1 and breaking the monotonic pattern a disproportionate relationship would require. The only notable jump occurs between Q3 and Q4, where saturation is prevalent. This pattern indicates a threshold effect at high capacity, not the continuous disproportionate increase the hypothesis describes.
+Q2 has the lowest mean fare, breaking the monotonic pattern a disproportionate relationship would require. The only notable jump occurs between Q3 and Q4, where saturation is prevalent — a threshold effect, not a continuous escalation.
 
 #### Model Comparison
 
-Linear Regression (R² = 38.80%, RMSE = $65.04) outperforms PCA Regression (R² = 32.84%, RMSE = $68.14) on every evaluation metric (source: `Outputs/Evaluation/Metrics.txt`; full comparison in Appendix A.2). PCA compresses the 19 features into 10 principal components capturing 96.70% of total variance, with PC1 dominated by load factor (loading = 0.394, 29.57% variance explained; source: `Outputs/Evaluation/PCA_Variance.txt`). The fact that the PCA model — which organizes data primarily around load factor's variance — performs worse confirms that load factor's dominance in the covariance structure does not translate into fare prediction.
+Linear Regression (R² = 38.80%, RMSE = $65.04) outperforms PCA Regression (R² = 32.84%, RMSE = $68.14) on every metric (full comparison in Appendix A.2). PCA compresses the 19 features into 10 components capturing 96.70% of total variance, with PC1 dominated by load factor (loading = 0.394, 29.57% variance explained). The PCA model — organized primarily around load factor's variance — performs worse, confirming that load factor's dominance in the covariance structure does not translate into fare prediction.
 
-*Summary.* Correlation is near zero, the controlled coefficient is negative, the quartile pattern is non-monotonic, and the hypothesis's control variables have no within-sample variation. None of the three techniques produces evidence supporting the hypothesized relationship.
+**Summary.** Correlation is near zero, the controlled coefficient is negative, the quartile pattern is non-monotonic, and the control variables have no within-sample variation. None of the three techniques supports the hypothesis.
 
 ### Data Visualization
 
@@ -86,17 +86,17 @@ Linear Regression (R² = 38.80%, RMSE = $65.04) outperforms PCA Regression (R² 
 
 ![Fig 1.1: Modeling Overview](Outputs/Modeling/Modeling_Overview.png)
 
-*Fig 1.1: Four-panel summary of feature relationships. Top-left: correlation heatmap showing the block of highly correlated load factor variants and fare's weak association with most predictors. Top-right: Load Factor vs. Airfare scatter plot, displaying widely dispersed points with no upward trend. Bottom-left: Competition vs. Airfare, showing a mild negative spread as carrier count increases. Bottom-right: Delay Rate vs. Airfare, showing a loose positive association.*
+*Fig 1.1: Four-panel summary. Top-left: correlation heatmap showing the load factor cluster and fare's weak association with most predictors. Top-right: Load Factor vs. Airfare scatter with no upward trend. Bottom-left: Competition vs. Airfare with mild negative spread. Bottom-right: Delay Rate vs. Airfare with loose positive association.*
 
-The heatmap visually isolates the load factor cluster — four variants correlating near 1.0 with each other but registering only faint color against fare. This confirms why the linear model assigns them identical coefficients: they carry redundant information. The Load Factor vs. Airfare scatter is the most directly relevant panel. If the hypothesis held, points would trend upward with increasing load factor; instead, the cloud is flat. By contrast, the Delay Rate scatter shows a visible positive spread, consistent with delay features dominating the regression coefficients.
+The heatmap isolates the load factor cluster — four variants correlating near 1.0 with each other but barely registering against fare, which is why the linear model assigns them identical coefficients. The Load Factor vs. Airfare scatter is flat where the hypothesis predicts an upward trend. The Delay Rate scatter shows a visible positive spread, consistent with delay features dominating the regression.
 
 #### Fig 1.2 — Actual vs. Predicted Fares
 
 ![Fig 1.2: Actual vs. Predicted](Outputs/Evaluation/Actual_Vs_Predicted.png)
 
-*Fig 1.2: Predicted versus actual fares for Linear Regression and PCA Regression on 570 test samples. The diagonal line represents perfect prediction.*
+*Fig 1.2: Predicted versus actual fares for both models on 570 test samples. The diagonal represents perfect prediction.*
 
-Both models cluster around the diagonal at moderate fare levels ($150–$350) but diverge at higher fares. The Linear model's mean absolute error is $45.14 (16.7% of the $269.43 mean fare), with errors widening beyond $400 where the model systematically under-predicts (source: `Outputs/Modeling/Predictions_Summary.txt`). PCA Regression's scatter is visibly more dispersed, consistent with its higher RMSE. The under-prediction at high fare levels reflects the dominance of distance and delay variables in this range — features that the PCA compression partially collapses — rather than any load factor effect.
+Both models cluster around the diagonal at moderate fare levels ($150–$350) but diverge at higher fares. The Linear model's MAE is $45.14 (16.7% of the $269.43 mean fare), with systematic under-prediction beyond $400 driven by distance and delay variables rather than load factor. PCA Regression is visibly more dispersed, consistent with its higher RMSE.
 
 #### Fig 1.3 — Diagnostics
 
@@ -104,37 +104,37 @@ Both models cluster around the diagonal at moderate fare levels ($150–$350) bu
 
 *Fig 1.3: Residual histogram, Q-Q plot, and PCA cumulative variance curve.*
 
-The residual histogram is approximately symmetric around zero with moderate tails, indicating no systematic directional bias. The Q-Q plot shows approximate normality in the core with departures in the tails, expected given airfare heterogeneity. The PCA cumulative variance curve rises steeply through PC1–PC3 (60.5%) then gradually plateaus. This shape illustrates that load factor and delay features account for most data variance, but since PCA Regression underperforms Linear Regression, the dimensions these features dominate do not correspond closely to fare variation.
+Residuals are approximately symmetric around zero with no directional bias. The Q-Q plot shows normality in the core with tail departures expected given fare heterogeneity. The PCA variance curve rises steeply through PC1–PC3 (60.5%) then plateaus — load factor and delay features account for most data variance, but since PCA Regression underperforms, these dimensions do not correspond to fare variation.
 
 #### Fig 1.4 — Metrics Comparison
 
 ![Fig 1.4: Metrics Comparison](Outputs/Evaluation/Metrics_Comparison.png)
 
-*Fig 1.4: Side-by-side bar chart of RMSE, MAPE, R², SNR, and Accuracy (1−MAPE) for Linear Regression versus PCA Regression.*
+*Fig 1.4: RMSE, MAPE, R², SNR, and Accuracy (1−MAPE) for Linear Regression versus PCA Regression.*
 
-Linear Regression leads on every metric. The R² gap (38.8% vs. 32.8%) is the most informative: compressing correlated features through PCA reduces predictive power rather than improving it. This rules out the possibility that multicollinearity among load factor variants artificially inflated the unreduced model's performance, and it reinforces that the variance load factor dominates is not fare-relevant variance.
+Linear Regression leads on every metric. The R² gap (38.8% vs. 32.8%) is the key finding: compressing correlated features through PCA reduces predictive power. This rules out multicollinearity as a source of inflated performance and confirms that the variance load factor dominates is not fare-relevant variance.
 
 ### Analysis
 
-The results and visualizations above address each component of the hypothesis individually. This section synthesizes them into a unified assessment.
+This section synthesizes the results and visualizations into a unified assessment of the hypothesis.
 
-**Load factor's association with fare is negligible.** At r = 0.073, load factor explains roughly 0.5% of fare variance — a result confirmed both numerically by the correlation analysis and visually by the flat scatter in Fig 1.1. When other features are held constant, load factor's coefficient reverses sign to −$7.15. The hypothesis requires a positive, meaningful relationship; neither the raw association nor the controlled estimate provides one.
+**Load factor's association with fare is negligible.** At r = 0.073, load factor explains roughly 0.5% of fare variance, confirmed by the flat scatter in Fig 1.1. When other features are held constant, load factor's coefficient reverses sign to −$7.15. The hypothesis requires a positive, meaningful relationship; neither the raw nor controlled estimate provides one.
 
-**The fare pattern across load factor levels is not disproportionate.** A disproportionate effect would produce progressively larger fare increases at higher load factor levels. Instead, Q2 has the lowest mean fare, and the only significant increase occurs in Q4, where it coincides with the ≥80% saturation threshold. The linear model isolates this as a discrete +$11.77 premium — a modest threshold effect, not a continuous escalation. Fig 1.2 reinforces this: the models' prediction errors at high fare levels are driven by distance and delay features, not by capacity pressure.
+**The fare pattern is not disproportionate.** A disproportionate effect would produce progressively larger fare increases at higher load factor levels. Instead, Q2 has the lowest mean fare, and the only significant jump occurs in Q4 at the ≥80% saturation threshold — a discrete +$11.77 premium, not a continuous escalation.
 
-**The hypothesis's control conditions cannot be evaluated.** Fuel price is constant across all 2,849 observations (std = 0.0000), yielding NaN correlations and a zero regression coefficient. Passenger demand correlates at 0.002 with fare. With neither variable exhibiting within-sample variation, the hypothesis condition "even when fuel prices and demand are held constant" lacks a testable contrast in this single-quarter cross-section.
+**The control conditions cannot be evaluated.** Fuel price is constant across all 2,849 observations, yielding NaN correlations and a zero coefficient. Passenger demand correlates at 0.002 with fare. Neither variable varies within this single-quarter cross-section, so the hypothesis condition "even when fuel prices and demand are held constant" cannot be tested.
 
-**Load factor dominates data structure but not fare structure.** PCA identifies load factor as the top-loading feature on PC1 (29.6% of total variance), yet PCA Regression explains less fare variance than the unreduced Linear model. This dissociation, visible in the cumulative variance curve of Fig 1.3 and the metric gaps in Fig 1.4, demonstrates that the dimensions load factor organizes are not the dimensions along which fares vary. Operational disruption variables and route distance — features that rank lower in overall covariance — carry far more predictive weight for fares.
+**Load factor dominates data structure but not fare structure.** PCA places load factor as the top-loading feature on PC1 (29.6% of total variance), yet PCA Regression explains less fare variance than the unreduced model (32.8% vs. 38.8%). The dimensions load factor organizes are not the dimensions along which fares vary.
 
-**What the data indicate instead.** Fares are most strongly associated with route distance (r = 0.553) and delay-related features, which collectively hold over 375 times more absolute coefficient weight than load factor. Competition exerts a modest downward effect (−$8.04 per additional carrier). Together, these features account for the 38.8% of fare variance the best model explains, while the remaining 61.2% lies outside the scope of the available variables. Load factor, despite being the most prominent feature in the data's covariance structure, does not contribute meaningfully to this explained portion.
+**What the data indicate instead.** Fares are most strongly associated with route distance (r = 0.553) and delay-related features, which collectively hold over 375 times more absolute coefficient weight than load factor. Competition exerts a modest downward effect (−$8.04 per additional carrier). These features account for the 38.8% of fare variance the best model explains. Load factor does not contribute meaningfully to that portion.
 
 ## Conclusion
 
-The analysis does not provide evidence for the hypothesis. Load factor's correlation with fare is near zero, its controlled coefficient is negative, the quartile pattern is non-monotonic, and the required control variables lack sufficient variation for evaluation. The single-quarter design further prevents assessment of the temporal dimension.
+The analysis does not support the hypothesis. Load factor's correlation with fare is near zero, its controlled coefficient is negative, the quartile pattern is non-monotonic, and the required control variables lack within-sample variation. The single-quarter design further prevents assessment of the temporal dimension.
 
-These results suggest that airfare in this dataset is shaped primarily by route distance and operational disruption measures, with competition exerting modest downward pressure. Load factor's prominence in the data's covariance structure — confirmed by PCA — does not translate into fare-level explanatory power.
+Airfare in this dataset is shaped primarily by route distance and operational disruption measures, with competition exerting modest downward pressure. Load factor's prominence in the data's covariance structure does not translate into fare-level explanatory power.
 
-Two directions would strengthen future work. First, expanding the dataset to multiple quarters or years would introduce temporal variation in both load factor and fuel prices, enabling a direct test of the "sustained over time" condition. Second, nonlinear or threshold-based models could better capture the discrete saturation effect identified in this analysis, though the current R² (38.8%) and load factor's minimal contribution suggest that broader data coverage is likely to be more productive than increased model complexity.
+Two directions would strengthen future work. First, expanding to multiple quarters or years would introduce temporal variation in load factor and fuel prices, enabling a direct test of the "sustained over time" condition. Second, nonlinear or threshold-based models could better capture the discrete saturation effect identified here, though broader data coverage is likely more productive than increased model complexity.
 
 ## References
 

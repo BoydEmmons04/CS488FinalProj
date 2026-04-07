@@ -160,8 +160,6 @@ Two directions would strengthen future work. First, expanding to multiple quarte
 
 ### A.1 Route Distance Comparison
 
-Market distance quartiles (derived from `Outputs/Analysis_Table.csv`) exhibit a monotonic fare progression, illustrating the degree to which route distance is associated with fare levels:
-
 | Distance Quartile | Mean Fare | Median Fare | Routes |
 |---|---|---|---|
 | Q1 (shortest routes) | $227.17 | $225.77 | 713 |
@@ -169,11 +167,11 @@ Market distance quartiles (derived from `Outputs/Analysis_Table.csv`) exhibit a 
 | Q3 | $281.29 | $276.90 | 712 |
 | Q4 (longest routes) | $333.76 | $315.94 | 712 |
 
-From the shortest to the longest distance quartile, mean fares increase by $106.59 (46.9%), compared to the $39.52 (15.1%) raw difference between saturated and non-saturated routes. Distance accounts for approximately 30.6% of fare variance (0.5532² = 0.306), while load factor accounts for approximately 0.5% (0.0725² = 0.005).
+*Table 2: Analysis_Table.csv*
+
+Market distance quartiles exhibit a monotonic fare progression, illustrating the degree to which route distance is associated with fare levels. From the shortest to the longest distance quartile, mean fares increase by $106.59 (46.9%), compared to the $39.52 (15.1%) raw difference between saturated and non-saturated routes. Distance accounts for approximately 30.6% of fare variance (0.5532² = 0.306), while load factor accounts for approximately 0.5% (0.0725² = 0.005).
 
 ### A.2 Full Model Comparison
-
-Evaluated on 570 test samples (mean actual fare $269.43). Source: `Outputs/Evaluation/Metrics.txt`.
 
 | Metric | Linear Regression | PCA Regression | Linear Advantage |
 |---|---|---|---|
@@ -183,11 +181,11 @@ Evaluated on 570 test samples (mean actual fare $269.43). Source: `Outputs/Evalu
 | SNR | 17.16 | 15.64 | 1.53 higher |
 | Accuracy (1−MAPE) | 78.41% | 76.65% | 1.76pp higher |
 
-Linear Regression outperforms PCA Regression on each metric. The MAE of $45.14 corresponds to 16.7% of the mean fare, the median absolute error is $31.78, and the 90th percentile error is $100.46. The largest single prediction error is $419.36. Both models exhibit a slight positive bias in predicted values, with mean residuals of −$5.83 and −$6.42 respectively. Prediction details are from `Outputs/Modeling/Predictions_Summary.txt`; model comparison metrics are from `Outputs/Evaluation/Metrics.txt`; the bar chart visualization is `Outputs/Evaluation/Metrics_Comparison.png`.
+*Table 3: Metrics.txt — Evaluated on 570 test samples (mean actual fare $269.43)*
+
+Linear Regression outperforms PCA Regression on each metric. The MAE of $45.14 corresponds to 16.7% of the mean fare, the median absolute error is $31.78, and the 90th percentile error is $100.46. Both models exhibit a slight positive bias, with mean residuals of −$5.83 and −$6.42 respectively.
 
 ### A.3 Prediction Summary
-
-Source: `Outputs/Modeling/Predictions_Summary.txt`.
 
 | Metric | Linear Regression | PCA Regression |
 |---|---|---|
@@ -200,11 +198,11 @@ Source: `Outputs/Modeling/Predictions_Summary.txt`.
 | Max AE | $419.36 | $410.11 |
 | Mean Residual | −$5.83 | −$6.42 |
 
-The PCA model compresses the data into 10 principal components, with PC1 dominated by load factor (see `Outputs/Evaluation/PCA_Variance.txt`). It performs worse than the unreduced Linear model on each error metric, indicating that the variance structure captured by PCA — which is largely organized around load factor — does not align closely with fare variation.
+*Table 4: Predictions_Summary.txt*
+
+The PCA model compresses the data into 10 principal components, with PC1 dominated by load factor. It performs worse than the unreduced Linear model on each error metric, indicating that the variance structure captured by PCA does not align closely with fare variation.
 
 ### A.4 PCA Variance Decomposition
-
-Source: `Outputs/Evaluation/PCA_Variance.txt`.
 
 | Component | Variance Explained | Cumulative | Top Feature | Loading |
 |---|---|---|---|---|
@@ -215,11 +213,11 @@ Source: `Outputs/Evaluation/PCA_Variance.txt`.
 | PC5 | 7.04% | 79.24% | — | — |
 | PC6–PC10 | 17.46% | 96.70% | — | — |
 
-Load factor has the largest loading on PC1 (0.394), making it the most prominent variable in the overall covariance structure. However, PCA Regression (R² = 32.8%) yields 5.97 percentage points less explained variance than Linear Regression (R² = 38.8%), suggesting that the dimensions load factor dominates capture data structure rather than fare-level variation. The PCA cumulative variance curve is shown in the "PCA Cumulative Variance" subplot of `Outputs/Evaluation/Diagnostics.png`.
+*Table 5: PCA_Variance.txt*
+
+Load factor has the largest loading on PC1 (0.394), making it the most prominent variable in the covariance structure. However, PCA Regression (R² = 32.8%) yields 5.97pp less explained variance than Linear Regression (R² = 38.8%), suggesting that the dimensions load factor dominates capture data structure rather than fare-level variation.
 
 ### A.5 Full Feature Importance Table (Linear Regression)
-
-Source: `Outputs/Evaluation/Linear_Importance.txt`.
 
 | Rank | Feature | Coefficient | Abs Coefficient |
 |---|---|---|---|
@@ -243,9 +241,9 @@ Source: `Outputs/Evaluation/Linear_Importance.txt`.
 | 18 | `passengers_db1b` | −0.001 | 0.001 |
 | 19 | `avg_fuel_price` | 0.00 | 0.00 |
 
-### A.6 Full Correlation with Average Fare (Top 15)
+*Table 6: Linear_Importance.txt*
 
-Source: full correlation matrix computed in `Model.py` via `run_modeling_pipeline()`, top correlations also summarized in `Outputs/Evaluation/Conclusions.txt`.
+### A.6 Full Correlation with Average Fare (Top 15)
 
 | Feature | Pearson r with avg_fare |
 |---|---|
@@ -266,9 +264,9 @@ Source: full correlation matrix computed in `Model.py` via `run_modeling_pipelin
 | `origin_arr_delay_rate` | 0.0774 |
 | `load_factor` | 0.0725 |
 
-### A.7 Focused Correlation Matrix
+*Table 7: Conclusions.txt*
 
-Source: `Outputs/Modeling/Correlation.txt`.
+### A.7 Focused Correlation Matrix
 
 |  | load_factor | competition_unique_carriers | route_avg_arr_delay_rate | avg_fuel_price | passengers_db1b | avg_fare |
 |---|---|---|---|---|---|---|
@@ -278,6 +276,8 @@ Source: `Outputs/Modeling/Correlation.txt`.
 | avg_fuel_price | NaN | NaN | NaN | NaN | NaN | NaN |
 | passengers_db1b | 0.207 | 0.646 | 0.054 | NaN | 1.000 | 0.002 |
 | avg_fare | 0.074 | −0.114 | 0.129 | NaN | 0.002 | 1.000 |
+
+*Table 8: Correlation.txt*
 
 ### A.8 Source Code Files
 
